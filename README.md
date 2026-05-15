@@ -1,164 +1,220 @@
 # Ripple — Schedule Impact Forecasting
 
-Ripple is a professionalised front-end prototype for schedule impact forecasting and P3M coordination.
+A prototype for forecasting the downstream effect of any schedule change on a
+multi-stream programme. Drag a task on the timeline and Ripple computes which
+tasks shift, which constraints break, and how the forecast finish date moves —
+all before the change is applied.
 
-It is not just a Kanban board. The purpose is to show the consequence of schedule movement: if one task moves, which linked tasks move, what constraints break, whether the critical path changes, and how the forecast finish changes.
+This repository is the **Vite + React + TypeScript** port of the original
+single-file HTML prototype (`ripple-v0_8.html`). The visual design, scheduling
+engine, and interaction model are preserved; what changed is the structure:
+the engine is now pure TypeScript, the UI is a tree of React components, and
+the project is set up for CI, testing, and Netlify deployment.
 
-## Current status
+---
 
-This repository is a structured Vite + React + TypeScript migration from the original single-file `ripple-v0.8.html` prototype.
+## Getting started
 
-This version is suitable for GitHub and Netlify deployment as a static prototype. It is **not approved for production use** and must not contain real company, customer, supplier, MOD, financial or operational data.
-
-## Features preserved in this first structured build
-
-- Kanban board
-- Timeline view with frozen task labels
-- Board / timeline / both view switching
-- Parent and subtask display
-- Critical path highlighting
-- Locked milestone display
-- Forecast preview when dates are changed
-- Impact strip with apply/cancel
-- Inspector drawer
-- Editable task dates via inspector
-- Editable task status/swimlane via inspector
-- JSON export
-- localStorage persistence through an adapter
-- Separated schedule, dependency, forecast and impact engines
-
-## Known limitations
-
-This is the first professionalised build, not the final product.
-
-The following behaviours from the original HTML are not yet fully rebuilt:
-
-- Dependency line drawing/creation is scaffolded in the architecture but not fully reimplemented.
-- Resize handles on task bars need hardening.
-- Working calendar logic exists as a scaffold; schedule calculations still need full working-day arithmetic.
-- Board column and swimlane editing are not yet exposed in the UI.
-- Accessibility needs a proper pass, including focus trapping for future modals and keyboard alternatives for drag actions.
-- Tests are starter tests only and should be expanded before serious feature work.
-
-## Architecture
-
-```text
-src/
-  domain/        Domain types and fictional seed data
-  engine/        Pure scheduling, dependency, forecast, calendar and impact logic
-  state/         App reducer and persistence adapter
-  components/    React UI components
-  styles/        Design tokens, global CSS and layout rules
-  export/        JSON export and future analytics schema
-  tests/         Engine test scaffolding
-```
-
-## Build principles
-
-1. Keep domain logic independent of the UI.
-2. Keep schedule calculations in engine modules.
-3. Keep React components focused on rendering and dispatching actions.
-4. Keep UI state separate from domain state.
-5. Route persistence through `persistenceAdapter.ts`.
-6. Route exports through the `export/` folder.
-7. Use the overlay/z-index scale in `tokens.css`.
-8. Do not invent arbitrary z-index values.
-9. Avoid visible text overlap at 1440px, 1280px, 1024px and 768px widths.
-10. Do not use real operational data in the prototype.
-
-## Local development
-
-Install dependencies:
+Requires Node 20 or higher.
 
 ```bash
-npm install
+npm install        # one time
+npm run dev        # local dev server (Vite, hot reload)
+npm run build      # production build → dist/
+npm run preview    # serve the built dist/ locally
+npm run test       # vitest unit tests
+npm run test:watch # vitest in watch mode
 ```
 
-Run locally:
+The dev server prints a localhost URL. Open it in any modern browser.
 
-```bash
-npm run dev
+---
+
+## Project structure
+
+```
+ripple/
+├── index.html               # Vite entry HTML
+├── netlify.toml             # Netlify deploy config
+├── package.json
+├── tsconfig.json
+├── vite.config.ts
+└── src/
+    ├── main.tsx             # React mount
+    ├── App.tsx              # Root composition (reducer + modal state)
+    ├── styles/              # CSS tokens, global, layout
+    ├── domain/              # Types, constants, seed data
+    ├── engine/              # Pure scheduling engine
+    │   ├── dateUtils.ts
+    │   ├── calendarEngine.ts
+    │   ├── dependencyEngine.ts
+    │   ├── scheduleEngine.ts
+    │   ├── constraintEngine.ts
+    │   ├── forecastEngine.ts
+    │   └── impactEngine.ts
+    ├── state/               # Reducer + localStorage adapter
+    ├── components/
+    │   ├── AppShell/        # Header, view switch
+    │   ├── Board/           # Kanban board
+    │   ├── Timeline/        # Timeline + drag hooks + dep lines
+    │   ├── InspectorDrawer/ # Right rail (task inspector + impact panel)
+    │   ├── ImpactStrip/     # Forecast summary above the timeline
+    │   ├── Modals/          # Task creator, settings
+    │   ├── Legend/
+    │   ├── StatusPill/
+    │   └── Toasts/          # Hint
+    ├── export/              # JSON export (Ripple Export v1)
+    └── tests/               # Vitest unit tests
 ```
 
-Build:
+### Architecture in one paragraph
 
-```bash
-npm run build
-```
+The engine in `src/engine/` is pure TypeScript. It takes work items in and
+returns work items out. Nothing in the engine touches the DOM, React, or
+localStorage. The reducer in `src/state/appState.ts` is the single point at
+which a user action becomes a new state — it composes engine functions and
+returns a new `AppState`. React components only read state and dispatch
+actions; they never call engine functions directly. The persistence adapter
+serialises state to localStorage with a version key (`ripple_state_v3`); the
+pending forecast is intentionally excluded so a refresh always lands on a
+committed state.
 
-Preview production build:
+### Overlay (z-index) scale
 
-```bash
-npm run preview
-```
+All overlay layering is defined as CSS custom properties in
+`src/styles/tokens.css` (`--z-base` … `--z-toast`). Components reference these
+tokens; raw `z-index` values are not used.
 
-Run tests:
+| Token            | Used for                                                  |
+| ---------------- | --------------------------------------------------------- |
+| `--z-task`       | task bars, milestones                                     |
+| `--z-annotation` | today line, dep lines, forecast ghosts                    |
+| `--z-sticky`     | sticky timeline headers, sticky group labels              |
+| `--z-controls`   | dep handles, resize handles                               |
+| `--z-popover`    | dep popover, inline rename inputs                         |
+| `--z-panel`      | inspector drawer                                          |
+| `--z-strip`      | impact strip                                              |
+| `--z-modal`      | modal backdrops + modals                                  |
+| `--z-drag`       | active drag/draw layer                                    |
+| `--z-toast`      | hint                                                      |
 
-```bash
-npm test
-```
+---
 
-## Netlify deployment
+## Deploying to Netlify
 
-Use these settings:
+1. Push this repository to GitHub.
+2. In Netlify, **Add new site → Import an existing project** and pick the repo.
+3. Netlify will read `netlify.toml`:
+   - Build command: `npm run build`
+   - Publish directory: `dist`
+   - Node version: 20
+4. SPA fallback is already configured (`/*` → `/index.html`).
 
-- Build command: `npm run build`
-- Publish directory: `dist`
+That's it. The first deploy should succeed without any additional settings.
 
-The included `netlify.toml` is configured for a Vite single-page app.
+### Custom domain
 
-## GitHub setup checklist
+If you point a domain at the Netlify site, you may also want to add the
+deployed URL to `index.html` `<meta>` tags. The bundle itself is static and has
+no environment-specific configuration.
+
+---
+
+## Pushing to GitHub for the first time
+
+From the project root:
 
 ```bash
 git init
 git add .
-git commit -m "Initial professional Ripple prototype"
+git commit -m "Initial commit — Ripple v0.9 React/TS port"
 git branch -M main
-git remote add origin <your-github-repo-url>
+git remote add origin <your-repo-url>
 git push -u origin main
 ```
 
-Then connect the GitHub repository to Netlify.
+Netlify will pick the next push up automatically once connected.
+
+---
+
+## What's here in this version
+
+| Feature                                  | Status   |
+| ---------------------------------------- | -------- |
+| Forward-pass scheduling                  | ✅       |
+| Backward pass + critical path + float    | ✅       |
+| Constraint types (4 + dependency conflict) | ✅     |
+| Forecast preview with full impact diff   | ✅       |
+| Apply forecast with auto-pin on revert   | ✅       |
+| Bar drag, left-resize, right-resize      | ✅       |
+| Dep handle drag to create new dependency | ✅       |
+| Dep popover (type / lag / delete)        | ✅       |
+| Zoom presets, slider, fit-to-screen      | ✅       |
+| Group-by lens (swimlane / parent / status / none) | ✅ |
+| Editable columns (rename / add / delete) | ✅       |
+| Editable swimlanes (rename / add / delete) | ✅     |
+| Task creator modal                       | ✅       |
+| Settings modal (highlight weekends, holidays) | ✅  |
+| Parent / subtask rollups                 | ✅       |
+| Parents as ghost headers on the board    | ✅       |
+| Colour tags                              | ✅       |
+| JSON export (`ripple.export.v1`)         | ✅       |
+| Versioned localStorage persistence       | ✅       |
+| Weekend / holiday visual overlays        | ✅       |
+| Today line                               | ✅       |
+| Hint toasts                              | ✅       |
+| Escape / click-outside handling          | ✅       |
+
+### Known limitations (not yet implemented)
+
+- Working-calendar arithmetic. Weekends and holidays display visually but are
+  not yet skipped in duration / date math. `calendarEngine.ts` includes a
+  scaffolded `addWorkingDays`; wiring it into the schedule engine is a future
+  release.
+- Multi-select. Tasks are selected and edited one at a time.
+- Undo / redo. The reducer is structured to support this (single source of
+  state mutation), but no undo stack is in place.
+- Backend persistence. State lives in `localStorage` only.
+- Authentication / multi-user. None.
+
+---
 
 ## Roadmap
 
-### Phase 1: Stabilise professional prototype
+1. **v0.10 — Working calendar math.** Wire `addWorkingDays` into the forward
+   pass; constraint dates respect non-working days.
+2. **v0.11 — Multi-select + bulk move.** Select multiple bars; drag them as a
+   group; preview the combined impact.
+3. **v0.12 — Undo / redo.** Action history with bounded depth.
+4. **v0.13 — Server persistence.** Replace the localStorage adapter with an
+   HTTP adapter against a backend that will be added separately.
 
-- Complete dependency drawing and editing
-- Add controlled board column editing
-- Add controlled swimlane editing
-- Add full keyboard and accessibility support
-- Add stronger scheduling tests
-- Add no-overlap regression checklist
+---
 
-### Phase 2: Scheduling correctness
+## Security and data handling
 
-- Working-day calendar logic
-- Holiday and non-working day arithmetic
-- More dependency types
-- Baselines
-- Scenario save/compare
+This prototype is for design and feedback only. **Do not use it with real
+operational data.** Specifically:
 
-### Phase 3: P3M expansion
+- All data is fictional. The seed (`src/domain/seedData.ts`) describes a
+  generic capability-delivery example.
+- The app does not call any backend. State is held in memory and (optionally)
+  in `localStorage` on the user's own machine.
+- There is no authentication or access control.
+- No third-party analytics are loaded.
+- The only external dependency at runtime is Google Fonts (`fonts.googleapis.com`)
+  for the Inter and JetBrains Mono webfonts. Remove those `<link>` tags in
+  `index.html` if even that level of third-party network access is
+  unacceptable in your deployment context.
 
-- Multi-board roadmap view
-- Cross-board dependencies
-- Resource demand modelling
-- Cost exposure modelling
-- Analytics-ready exports
-- Native reporting dashboards
+If you want to demo this with sample programme data, replace
+`src/domain/seedData.ts` with your own fictional examples. Do not commit real
+data to the repository.
 
-### Phase 4: AI-assisted insight
+---
 
-- AI schedule review
-- AI change narrative
-- AI risk summary
-- AI stakeholder update generation
+## Reporting issues
 
-## Security notes
-
-- No secrets should be committed.
-- Do not add `.env` files to GitHub.
-- Do not store sensitive data in localStorage.
-- Do not add third-party tracking or analytics without approval.
-- Keep all demo data fictional.
+This is a single-author prototype. Open a GitHub issue describing the bug or
+suggestion; include the browser, viewport size, and a screenshot or short
+recording where possible.
