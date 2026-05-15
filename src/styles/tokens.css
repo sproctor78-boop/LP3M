@@ -1,0 +1,43 @@
+:root {
+  --bg: #f4f5f2;
+  --surface: #ffffff;
+  --surface-2: #fafaf7;
+  --ink: #0b1220;
+  --ink-2: #2a3447;
+  --ink-muted: #6b7484;
+  --ink-faint: #9ca3af;
+  --border: #e5e5df;
+  --border-strong: #c9c8c0;
+  --accent: #1b3a6b;
+  --accent-soft: #dce3ee;
+  --forecast: #b45309;
+  --forecast-soft: #fef3c7;
+  --breach: #991b1b;
+  --breach-soft: #fee2e2;
+  --critical: #c2410c;
+  --locked: #475569;
+  --locked-soft: #e2e8f0;
+
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", Consolas, monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 2px rgba(11, 18, 32, 0.06);
+  --shadow-md: 0 8px 24px rgba(11, 18, 32, 0.08);
+  --shadow-lg: 0 24px 60px rgba(11, 18, 32, 0.18);
+
+  --z-base: 0;
+  --z-task: 10;
+  --z-annotation: 20;
+  --z-sticky: 30;
+  --z-controls: 40;
+  --z-popover: 50;
+  --z-panel: 60;
+  --z-strip: 70;
+  --z-modal: 80;
+  --z-drag: 90;
+  --z-toast: 100;
+}
