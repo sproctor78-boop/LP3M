@@ -1,66 +1,111 @@
-import { AppDomainState } from '../../domain/types';
-import { formatShort } from '../../engine/dateUtils';
+import { useState } from 'react';
+import { AppState } from '../../domain/types';
+import { BoardColumn } from './BoardColumn';
+import { showHint } from '../Toasts/Hint';
 
 interface Props {
-  domain: AppDomainState;
-  selectedTaskId: string | null;
-  showCritical: boolean;
+  state: AppState;
   onSelectTask: (taskId: string) => void;
   onMoveTaskStatus: (taskId: string, status: string) => void;
+  onRenameColumn: (key: string, label: string) => void;
+  onDeleteColumn: (key: string) => void;
+  onAddColumn: () => void;
+  onNewTask: () => void;
+  onCollapseBoard: () => void;
 }
 
-export function Board({ domain, selectedTaskId, showCritical, onSelectTask, onMoveTaskStatus }: Props) {
+export function Board({
+  state,
+  onSelectTask,
+  onMoveTaskStatus,
+  onRenameColumn,
+  onDeleteColumn,
+  onAddColumn,
+  onNewTask,
+  onCollapseBoard,
+}: Props) {
+  const { columns, tasks } = state.domain;
+  const [dragging, setDragging] = useState(false);
+  const [autoRenameKey, setAutoRenameKey] = useState<string | null>(null);
+
+  const breachTaskIds = new Set(
+    state.pendingForecast?.constraintBreaches.map((b) => b.taskId) ?? [],
+  );
+
+  const taskForColumn = (columnKey: string) => {
+    return tasks.filter((t) => {
+      const status = t.status || columns[0]?.key;
+      return status === columnKey;
+    });
+  };
+
+  const handleDrop = (taskId: string, columnKey: string) => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return;
+    if (task.status === columnKey) return;
+    onMoveTaskStatus(taskId, columnKey);
+    const column = columns.find((c) => c.key === columnKey);
+    if (column) showHint(`Moved "${task.title}" → ${column.label}`);
+  };
+
   return (
     <section className="board-panel">
-      <div className="panel-header">
+      <div className="board-header">
         <div>
-          <div className="panel-title">Work Board</div>
-          <div className="panel-meta">Operational capability delivery</div>
+          <div className="board-title">Work Board</div>
+          <div className="board-meta">Operational Capability Delivery</div>
+        </div>
+        <div className="board-header-actions">
+          <button type="button" className="btn" onClick={onNewTask} title="Add a new task">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <path d="M8 3v10M3 8h10" strokeLinecap="round" />
+            </svg>
+            New task
+          </button>
+          <button type="button" className="btn" onClick={onCollapseBoard} title="Hide board">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <path d="M10 3 L5 8 L10 13" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
         </div>
       </div>
-      <div className="kanban-columns">
-        {domain.columns.map((column) => {
-          const tasks = domain.tasks.filter((task) => task.status === column.key);
-          return (
-            <div
-              className="kanban-column"
-              key={column.key}
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={(event) => {
-                const taskId = event.dataTransfer.getData('text/plain');
-                if (taskId) onMoveTaskStatus(taskId, column.key);
-              }}
-            >
-              <div className="kanban-column-header">
-                <span className="kanban-column-title">{column.label}</span>
-                <span className="kanban-count">{tasks.length}</span>
-              </div>
-              {tasks.map((task) => (
-                <article
-                  key={task.id}
-                  className={`card ${selectedTaskId === task.id ? 'selected' : ''} ${task.criticalPath && showCritical ? 'critical' : ''}`}
-                  draggable
-                  onDragStart={(event) => event.dataTransfer.setData('text/plain', task.id)}
-                  onClick={() => onSelectTask(task.id)}
-                >
-                  <div className="card-id">{task.id}{task.isParent ? ' · Parent' : ''}</div>
-                  <div className="card-title">{task.title}</div>
-                  <div className="card-meta">
-                    <span>{formatShort(task.startDate)}</span>
-                    <span>→</span>
-                    <span>{formatShort(task.endDate)}</span>
-                    {!task.isMilestone && <span>{task.durationDays}d</span>}
-                  </div>
-                  <div className="card-badges">
-                    {task.isMilestone && <span className="badge">Milestone</span>}
-                    {task.locked && <span className="badge locked">Locked</span>}
-                    {task.criticalPath && showCritical && <span className="badge critical">Critical</span>}
-                  </div>
-                </article>
-              ))}
-            </div>
-          );
-        })}
+
+      <div className="kanban-cols">
+        {columns.map((column) => (
+          <BoardColumn
+            key={column.key}
+            column={column}
+            ownTasks={taskForColumn(column.key)}
+            allTasks={tasks}
+            showCritical={state.view.showCritical}
+            selectedTaskId={state.view.selectedTaskId}
+            breachTaskIds={breachTaskIds}
+            canDelete={columns.length > 1}
+            activeDrop={dragging}
+            autoRenameOnMount={autoRenameKey === column.key}
+            onRename={(label) => {
+              setAutoRenameKey(null);
+              onRenameColumn(column.key, label);
+            }}
+            onDelete={() => onDeleteColumn(column.key)}
+            onSelectTask={onSelectTask}
+            onDropTask={(taskId) => handleDrop(taskId, column.key)}
+            onDragStartCard={() => setDragging(true)}
+            onDragEndCard={() => setDragging(false)}
+          />
+        ))}
+
+        <button
+          type="button"
+          className="kanban-col-add"
+          onClick={onAddColumn}
+          title="Add a new column"
+        >
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <path d="M8 3v10M3 8h10" strokeLinecap="round" />
+          </svg>
+          Add column
+        </button>
       </div>
     </section>
   );

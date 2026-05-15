@@ -1,177 +1,500 @@
-import type { Dispatch } from 'react';
-import { AppAction } from '../../state/appState';
-import { AppState, TimelineWindow, WorkItem } from '../../domain/types';
-import { addDays, dayOfWeek, diffDays, formatNice, isWeekend } from '../../engine/dateUtils';
-import { moveTaskByDays } from '../../engine/forecastEngine';
+import { CSSProperties, useEffect, useRef, useState } from 'react';
+import {
+  AppState,
+  DependencyType,
+  GroupBy,
+  WorkItem,
+} from '../../domain/types';
+import {
+  addDays,
+  diffDays,
+  isWeekend,
+  todayISO,
+} from '../../engine/dateUtils';
+import { wouldCreateCycle } from '../../engine/dependencyEngine';
+import { ZoomControls } from './ZoomControls';
+import { TimelineHeader } from './TimelineHeader';
+import { SwimlaneLabel } from './SwimlaneLabel';
+import { TaskBar } from './TaskBar';
+import { MilestoneBar } from './MilestoneBar';
+import { DependencyLines } from './DependencyLines';
+import { DependencyPopover } from './DependencyPopover';
+import { DrawingState } from './useDepHandleDrag';
+import {
+  computeTimelineLayout,
+  computeTimelineWindow,
+  TOTAL_HEADER_HEIGHT,
+} from './layoutEngine';
+import { formatNice } from '../../engine/dateUtils';
+import { showHint } from '../Toasts/Hint';
 
 interface Props {
   state: AppState;
-  dispatch: Dispatch<AppAction>;
+  onZoom: (value: number) => void;
+  onGroupBy: (value: GroupBy) => void;
+  onRestoreBoard: () => void;
+  onSelectTask: (taskId: string) => void;
+  onToggleParent: (taskId: string) => void;
+  onToggleGroupCollapse: (key: string) => void;
+  onPreviewTaskDates: (taskId: string, start: string, end: string) => void;
+  onCancelForecast: () => void;
+  onCreateDependency: (fromId: string, toId: string, depType: DependencyType) => void;
+  onUpdateDependency: (fromId: string, toId: string, depType: DependencyType, lag: number) => void;
+  onRemoveDependency: (fromId: string, toId: string) => void;
+  onRenameSwimlane: (key: string, label: string) => void;
+  onDeleteSwimlane: (key: string) => void;
+  onMoveTaskSwimlane: (taskId: string, swimlane: string) => void;
+  onMoveTaskStatus: (taskId: string, status: string) => void;
+  onAddSwimlane: () => void;
+  /** Forecast strip should appear; this prop tells App whether to render the strip below. */
+  showImpactStrip: boolean;
 }
 
-function computeTimelineWindow(tasks: WorkItem[]): TimelineWindow {
-  const dates = tasks.flatMap((task) => [task.startDate, task.endDate]);
-  const min = dates.reduce((current, value) => value < current ? value : current, '9999-12-31');
-  const max = dates.reduce((current, value) => value > current ? value : current, '0000-01-01');
-  let start = addDays(min, -7);
-  while (dayOfWeek(start) !== 1) start = addDays(start, -1);
-  let end = addDays(max, 14);
-  while (dayOfWeek(end) !== 0) end = addDays(end, 1);
-  return { start, end, totalDays: diffDays(start, end) + 1 };
+interface DepPopoverState {
+  x: number;
+  y: number;
+  fromId: string;
+  toId: string;
 }
 
-function visibleTasks(state: AppState): WorkItem[] {
-  return state.domain.tasks.filter((task) => {
-    if (!task.parentId) return true;
-    return state.view.expandedParents[task.parentId] !== false;
-  });
-}
+export function Timeline({
+  state,
+  onZoom,
+  onGroupBy,
+  onRestoreBoard,
+  onSelectTask,
+  onToggleParent,
+  onToggleGroupCollapse,
+  onPreviewTaskDates,
+  onCancelForecast,
+  onCreateDependency,
+  onUpdateDependency,
+  onRemoveDependency,
+  onRenameSwimlane,
+  onDeleteSwimlane,
+  onMoveTaskSwimlane,
+  onMoveTaskStatus,
+  onAddSwimlane,
+  showImpactStrip,
+}: Props) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [drawing, setDrawing] = useState<DrawingState | null>(null);
+  const [depPopover, setDepPopover] = useState<DepPopoverState | null>(null);
 
-function groupTasks(state: AppState, tasks: WorkItem[]): Array<{ key: string; label: string; tasks: WorkItem[] }> {
-  const groups = new Map<string, WorkItem[]>();
-  const labelFor = (task: WorkItem): { key: string; label: string } => {
-    if (state.view.groupBy === 'status') {
-      const column = state.domain.columns.find((item) => item.key === task.status);
-      return { key: task.status, label: column?.label ?? task.status };
-    }
-    if (state.view.groupBy === 'parent') {
-      if (!task.parentId) return { key: '__top', label: 'Top level' };
-      const parent = state.domain.tasks.find((item) => item.id === task.parentId);
-      return { key: task.parentId, label: parent?.title ?? task.parentId };
-    }
-    if (state.view.groupBy === 'none') return { key: '__all', label: 'All tasks' };
-    const lane = state.domain.swimlanes.find((item) => item.key === task.swimlane);
-    return { key: task.swimlane, label: lane?.label ?? task.swimlane };
+  const window_ = computeTimelineWindow(state);
+  const layout = computeTimelineLayout(state);
+  const dayWidth = state.view.zoom;
+  const totalWidth = window_.totalDays * dayWidth;
+
+  const fc = state.pendingForecast;
+  const proposedById = fc ? new Map(fc.proposedTasks.map((t) => [t.id, t])) : null;
+
+  // Drawn tasks: in preview, use proposedTasks for both ghosts and dep lines
+  const drawnTasks = fc ? fc.proposedTasks : state.domain.tasks;
+
+  const xOf = (iso: string) => diffDays(window_.start, iso) * dayWidth;
+  const today = todayISO();
+
+  const handleFit = () => {
+    if (!scrollRef.current) return;
+    const available = scrollRef.current.clientWidth - 24;
+    const next = Math.max(1.5, Math.min(60, available / window_.totalDays));
+    onZoom(next);
   };
 
-  tasks.forEach((task) => {
-    const { key } = labelFor(task);
-    groups.set(key, [...(groups.get(key) ?? []), task]);
-  });
+  // Auto-close drawing line if it goes stale
+  useEffect(() => {
+    if (drawing === null && document.body.classList.contains('drawing-dep')) {
+      document.body.classList.remove('drawing-dep');
+    }
+  }, [drawing]);
 
-  return [...groups.entries()].map(([key, taskList]) => ({ key, label: labelFor(taskList[0]).label, tasks: taskList }));
-}
+  // ESC closes the dep popover
+  useEffect(() => {
+    if (!depPopover) return;
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDepPopover(null);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [depPopover]);
 
-export function Timeline({ state, dispatch }: Props) {
-  const baseTasks = visibleTasks(state);
-  const renderedTasks = state.pendingForecast
-    ? baseTasks.map((task) => state.pendingForecast?.proposedTasks.find((item) => item.id === task.id) ?? task)
-    : baseTasks;
-  const window = computeTimelineWindow(renderedTasks);
-  const dayWidth = state.view.timelineZoomPxPerDay;
-  const totalWidth = window.totalDays * dayWidth;
-  const xOf = (date: string) => diffDays(window.start, date) * dayWidth;
-  const groups = groupTasks(state, renderedTasks);
-  const projectFinish = renderedTasks.reduce((max, task) => task.endDate > max ? task.endDate : max, '0000-00-00');
-  const criticalCount = renderedTasks.filter((task) => task.criticalPath).length;
-  const minFloat = Math.min(...renderedTasks.map((task) => task.floatDays ?? 0));
-  const dates = Array.from({ length: window.totalDays }, (_, index) => addDays(window.start, index));
+  // Click outside the popover closes it
+  useEffect(() => {
+    if (!depPopover) return;
+    const handler = (event: PointerEvent) => {
+      const el = event.target as HTMLElement;
+      if (el.closest('.dep-popover')) return;
+      if (el.closest('.dep-hit')) return;
+      setDepPopover(null);
+    };
+    document.addEventListener('pointerdown', handler);
+    return () => document.removeEventListener('pointerdown', handler);
+  }, [depPopover]);
+
+  const renderRow = (
+    task: WorkItem,
+    y: number,
+    height: number,
+    isSummary: boolean,
+  ) => {
+    const rowClasses = ['timeline-row'];
+    if (task.parentId) rowClasses.push('subtask');
+    if (task.isParent) rowClasses.push('parent-row');
+    if (isSummary) rowClasses.push('summary');
+
+    const rowStyle: CSSProperties = {
+      position: 'absolute',
+      left: 0,
+      top: y,
+      width: totalWidth,
+      height,
+    };
+
+    // Build the bar(s) for this row
+    let barNode = null;
+    if (isSummary) {
+      // Synthetic summary row uses a single bar at the merged span
+      const left = xOf(task.startDate);
+      const widthDays = Math.max(1, diffDays(task.startDate, task.endDate) + 1);
+      barNode = (
+        <div
+          className="task-bar"
+          style={{
+            left,
+            width: Math.max(8, widthDays * dayWidth - 2),
+            background: 'var(--surface-3)',
+            borderColor: 'var(--border-strong)',
+            color: 'var(--ink-2)',
+          }}
+        >
+          <span className="task-bar-title">{task.title}</span>
+        </div>
+      );
+    } else if (task.isMilestone) {
+      const proposed = proposedById?.get(task.id);
+      const displayTask = proposed ?? task;
+      const breach = fc?.constraintBreaches.find((b) => b.taskId === task.id);
+      const left = xOf(displayTask.startDate);
+      barNode = (
+        <MilestoneBar
+          task={displayTask}
+          left={left}
+          dayWidth={dayWidth}
+          breach={!!breach}
+          onSelect={() => onSelectTask(task.id)}
+        />
+      );
+    } else {
+      // Bar logic: if fc is pending, render ghost + proposed where applicable
+      const proposed = proposedById?.get(task.id);
+      const wasChanged = fc?.changedTaskId === task.id;
+      const wasAffected = fc?.affectedTasks.some((a) => a.taskId === task.id);
+      const breach = fc?.constraintBreaches.find((b) => b.taskId === task.id);
+      const oldShift = fc?.affectedTasks.find((a) => a.taskId === task.id);
+
+      const ghost = wasChanged || wasAffected ? (
+        <TaskBar
+          key={`${task.id}-ghost`}
+          task={
+            wasChanged
+              ? { ...task, startDate: fc!.oldStartDate, endDate: fc!.oldEndDate }
+              : { ...task, startDate: oldShift!.oldStartDate, endDate: oldShift!.oldEndDate }
+          }
+          left={xOf(wasChanged ? fc!.oldStartDate : oldShift!.oldStartDate)}
+          dayWidth={dayWidth}
+          showCritical={state.view.showCritical}
+          selected={false}
+          ghost
+        />
+      ) : null;
+
+      const displayTask = proposed ?? task;
+      const bar = (
+        <TaskBar
+          key={task.id}
+          task={displayTask}
+          left={xOf(displayTask.startDate)}
+          dayWidth={dayWidth}
+          showCritical={state.view.showCritical}
+          selected={state.view.selectedTaskId === task.id}
+          forecast={!!wasAffected && !wasChanged}
+          directlyChanged={!!wasChanged}
+          breach={!!breach}
+          expanded={state.view.expandedParents[task.id] !== false}
+          onPreviewDates={(start, end) => onPreviewTaskDates(task.id, start, end)}
+          onCommitDates={(start, end, moved) => {
+            // The actual commit is handled by the App via Apply button on the impact strip;
+            // here we ensure the preview is set on release if it changed.
+            if (moved) onPreviewTaskDates(task.id, start, end);
+          }}
+          onCancelDates={() => onCancelForecast()}
+          onSelect={() => onSelectTask(task.id)}
+          onToggleParent={() => onToggleParent(task.id)}
+          isInvalidDepTarget={(fromId, toId) => wouldCreateCycle(state.domain.tasks, fromId, toId)}
+          onCreateDependency={(fromId, toId, side) => {
+            const depType: DependencyType = side === 'left' ? 'start_to_start' : 'finish_to_start';
+            onCreateDependency(fromId, toId, depType);
+            showHint(`New link: ${fromId} → ${toId}`);
+          }}
+          onDepDrawingChange={setDrawing}
+        />
+      );
+
+      barNode = (
+        <>
+          {ghost}
+          {bar}
+        </>
+      );
+    }
+
+    // Weekend + holiday overlays for the row
+    const overlays = [];
+    let cursor = window_.start;
+    while (cursor <= window_.end) {
+      if (isWeekend(cursor)) {
+        overlays.push(
+          <div
+            key={`w-${cursor}`}
+            className="row-weekend-overlay"
+            style={{ left: xOf(cursor), width: dayWidth }}
+          />,
+        );
+      }
+      if (state.domain.workingCalendar.holidays.includes(cursor)) {
+        overlays.push(
+          <div
+            key={`h-${cursor}`}
+            className="row-holiday-overlay"
+            style={{ left: xOf(cursor), width: dayWidth }}
+          />,
+        );
+      }
+      cursor = addDays(cursor, 1);
+    }
+
+    return (
+      <div
+        key={task.id}
+        className={rowClasses.join(' ')}
+        style={rowStyle}
+        data-task-id={task.id}
+        onDragOver={(event) => {
+          // Allow row-level drop targets when in swimlane/status group mode
+          if (state.view.groupBy === 'swimlane' || state.view.groupBy === 'status') {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+          }
+        }}
+      >
+        {overlays}
+        {barNode}
+      </div>
+    );
+  };
+
+  const gridContentHeight = layout.totalHeight;
+  const gridTotalHeight = gridContentHeight + TOTAL_HEADER_HEIGHT;
 
   return (
-    <>
+    <section className="timeline-panel">
       <div className="timeline-toolbar">
-        <div>
-          <div className="panel-title">Programme Timeline</div>
-          <div className="timeline-meta">
-            <span>Forecast finish: <strong>{formatNice(projectFinish)}</strong></span>
-            <span>Critical tasks: <strong>{criticalCount}</strong></span>
-            <span>Minimum float: <strong>{minFloat}d</strong></span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {state.view.mode === 'timeline' ? (
+            <button
+              type="button"
+              className="btn"
+              onClick={onRestoreBoard}
+              title="Show board"
+              aria-label="Show board"
+            >
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
+                <path d="M6 3 L11 8 L6 13" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          ) : null}
+          <div>
+            <div className="timeline-title">Programme Timeline</div>
+            <div className="timeline-meta">
+              <span>
+                Forecast finish:{' '}
+                <strong>
+                  {formatNice(
+                    fc
+                      ? fc.newProjectFinish
+                      : state.domain.tasks.reduce(
+                          (max, t) => (t.endDate > max ? t.endDate : max),
+                          '0000-00-00',
+                        ),
+                  )}
+                </strong>
+              </span>
+              <span>
+                Critical path:{' '}
+                <strong>
+                  {(fc ? fc.proposedTasks : state.domain.tasks).filter((t) => t.criticalPath).length}{' '}
+                  task{(fc ? fc.proposedTasks : state.domain.tasks).filter((t) => t.criticalPath).length === 1 ? '' : 's'}
+                </strong>
+              </span>
+            </div>
           </div>
         </div>
-        <div className="zoom-controls">
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-muted)', textTransform: 'uppercase' }}>Zoom</span>
-          <input
-            type="range"
-            min="6"
-            max="42"
-            value={dayWidth}
-            onChange={(event) => dispatch({ type: 'setZoom', value: Number(event.target.value) })}
+        <div className="timeline-toolbar-controls">
+          <div className="group-by-control">
+            <label htmlFor="group-by-select">Group by</label>
+            <select
+              id="group-by-select"
+              value={state.view.groupBy}
+              onChange={(event) => onGroupBy(event.target.value as GroupBy)}
+            >
+              <option value="swimlane">Swimlane</option>
+              <option value="parent">Parent</option>
+              <option value="status">Board column</option>
+              <option value="none">None</option>
+            </select>
+          </div>
+          <ZoomControls zoom={state.view.zoom} onZoomChange={onZoom} onFit={handleFit} />
+        </div>
+      </div>
+
+      <div className="timeline-scroll" ref={scrollRef}>
+        <div
+          className="timeline-grid"
+          style={{ width: totalWidth, height: gridTotalHeight, position: 'relative' }}
+        >
+          <TimelineHeader
+            window={window_}
+            dayWidth={dayWidth}
+            calendar={state.domain.workingCalendar}
           />
-        </div>
-      </div>
-      <div className="timeline-scroll">
-        <div className="timeline-grid" style={{ ['--day-width' as string]: `${dayWidth}px` }}>
-          <div className="timeline-head">
-            <div className="timeline-label-head">Task</div>
-            <div className="timeline-date-head" style={{ width: totalWidth }}>
-              <div className="date-cells">
-                {dates.map((date) => (
-                  <div className={`date-cell ${isWeekend(date) ? 'weekend' : ''}`} key={date} title={formatNice(date)}>
-                    {dayWidth >= 18 ? new Date(`${date}T00:00:00Z`).getUTCDate() : dayOfWeek(date) === 1 ? new Date(`${date}T00:00:00Z`).getUTCDate() : ''}
-                  </div>
-                ))}
+
+          {/* All groups + rows; we render absolutely positioned starting after the headers. */}
+          <div
+            style={{
+              position: 'absolute',
+              top: TOTAL_HEADER_HEIGHT,
+              left: 0,
+              width: totalWidth,
+              height: gridContentHeight,
+            }}
+          >
+            {layout.groups.map((group) => (
+              <div key={group.key}>
+                <SwimlaneLabel
+                  groupKey={group.key}
+                  label={group.label}
+                  taskCount={group.taskCount}
+                  collapsed={group.collapsed}
+                  editable={state.view.groupBy === 'swimlane'}
+                  canDelete={state.domain.swimlanes.length > 1}
+                  y={group.labelY}
+                  onToggleCollapse={() => onToggleGroupCollapse(group.key)}
+                  onRename={(label) => onRenameSwimlane(group.key, label)}
+                  onDelete={() => onDeleteSwimlane(group.key)}
+                  onDropTask={(taskId) => {
+                    if (state.view.groupBy === 'swimlane') {
+                      onMoveTaskSwimlane(taskId, group.key);
+                      const lane = state.domain.swimlanes.find((s) => s.key === group.key);
+                      if (lane) showHint(`Moved task → ${lane.label}`);
+                    } else if (state.view.groupBy === 'status') {
+                      onMoveTaskStatus(taskId, group.key);
+                    }
+                  }}
+                />
+                {group.summaryRow
+                  ? renderRow(group.summaryRow.task!, group.summaryRow.y, group.summaryRow.height, true)
+                  : group.rows.map((row) =>
+                      renderRow(row.task!, row.y, row.height, false),
+                    )}
               </div>
-            </div>
+            ))}
+
+            <DependencyLines
+              tasks={drawnTasks}
+              timelineStart={window_.start}
+              dayWidth={dayWidth}
+              totalWidth={totalWidth}
+              totalHeight={gridContentHeight}
+              showCritical={state.view.showCritical}
+              taskCentreY={layout.taskCentreY}
+              pendingForecast={fc}
+              selectedDep={state.view.selectedDep}
+              onSelectDep={(fromId, toId, x, y) => setDepPopover({ fromId, toId, x, y })}
+            />
+
+            {today >= window_.start && today <= window_.end ? (
+              <div
+                className="today-line"
+                style={{
+                  left: xOf(today),
+                  top: 0,
+                  height: gridContentHeight,
+                }}
+              />
+            ) : null}
           </div>
-          {groups.map((group) => (
-            <div className="group-row" key={group.key}>
-              <div className="group-label">{group.label}</div>
-              {group.tasks.map((task) => {
-                const original = state.domain.tasks.find((item) => item.id === task.id) ?? task;
-                const changed = state.pendingForecast?.changedTaskId === task.id;
-                const affected = state.pendingForecast?.affectedTasks.find((movement) => movement.taskId === task.id);
-                const left = xOf(task.startDate);
-                const width = Math.max(dayWidth - 2, (diffDays(task.startDate, task.endDate) + 1) * dayWidth - 2);
-                return (
-                  <div className="group-row" key={task.id}>
-                    <div className={`task-label ${task.parentId ? 'subtask' : ''}`} onClick={() => dispatch({ type: 'selectTask', taskId: task.id, openDrawer: true })}>
-                      {task.isParent && (
-                        <button className="btn" style={{ padding: '2px 6px' }} onClick={(event) => { event.stopPropagation(); dispatch({ type: 'toggleParent', taskId: task.id }); }}>
-                          {state.view.expandedParents[task.id] === false ? '+' : '−'}
-                        </button>
-                      )}
-                      <span className="task-label-id">{task.id}</span>
-                      <span className="task-label-title">{task.title}</span>
-                    </div>
-                    <div className={`timeline-row ${task.parentId ? 'subtask' : ''}`} style={{ width: totalWidth }}>
-                      {(changed || affected) && (
-                        <div
-                          className="task-bar ghost"
-                          style={{ left: xOf(original.startDate), width: Math.max(dayWidth - 2, (diffDays(original.startDate, original.endDate) + 1) * dayWidth - 2) }}
-                          title="Original position"
-                        >
-                          <span>{original.title}</span>
-                        </div>
-                      )}
-                      {task.isMilestone ? (
-                        <div className={`milestone ${task.locked ? 'locked' : ''}`} style={{ left: left + dayWidth / 2 - 14 }} title={task.title}>
-                          <span className="milestone-label">{task.title}</span>
-                        </div>
-                      ) : (
-                        <div
-                          className={`task-bar ${task.isParent ? 'parent' : ''} ${task.parentId ? 'subtask' : ''} ${task.locked ? 'locked' : ''} ${task.criticalPath && state.view.showCritical ? 'critical' : ''} ${changed ? 'direct' : affected ? 'forecast' : ''}`}
-                          style={{ left, width }}
-                          title={`${task.title}: ${formatNice(task.startDate)} to ${formatNice(task.endDate)}`}
-                          onClick={() => dispatch({ type: 'selectTask', taskId: task.id, openDrawer: true })}
-                          onPointerDown={(event) => {
-                            if (task.locked) return;
-                            const startX = event.clientX;
-                            const onMove = (moveEvent: PointerEvent) => {
-                              const delta = Math.round((moveEvent.clientX - startX) / dayWidth);
-                              if (delta !== 0) {
-                                const result = moveTaskByDays(state.domain.tasks, task.id, delta);
-                                if (result) dispatch({ type: 'previewTaskDates', taskId: task.id, startDate: result.newStartDate, endDate: result.newEndDate });
-                              }
-                            };
-                            const onUp = () => {
-                              document.removeEventListener('pointermove', onMove);
-                              document.removeEventListener('pointerup', onUp);
-                            };
-                            document.addEventListener('pointermove', onMove);
-                            document.addEventListener('pointerup', onUp);
-                          }}
-                        >
-                          <span>{task.title}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+
+          {state.view.groupBy === 'swimlane' ? (
+            <div style={{ position: 'absolute', left: 0, top: TOTAL_HEADER_HEIGHT + gridContentHeight }}>
+              <button type="button" className="swimlane-add" onClick={onAddSwimlane}>
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M6 2v8M2 6h8" strokeLinecap="round" />
+                </svg>
+                Add swimlane
+              </button>
             </div>
-          ))}
+          ) : null}
         </div>
       </div>
-    </>
+
+      {/* Drawing-line preview (fixed full-screen overlay) */}
+      {drawing ? (
+        <svg className={`drawing-line ${drawing.invalid ? 'invalid' : ''}`}>
+          <path
+            d={(() => {
+              const midX =
+                drawing.fromSide === 'right' ? drawing.startX + 12 : drawing.startX - 12;
+              return `M ${drawing.startX} ${drawing.startY} L ${midX} ${drawing.startY} L ${midX} ${drawing.cursorY} L ${drawing.cursorX} ${drawing.cursorY}`;
+            })()}
+          />
+        </svg>
+      ) : null}
+
+      {/* Dep popover */}
+      {depPopover
+        ? (() => {
+            const from = state.domain.tasks.find((t) => t.id === depPopover.fromId);
+            const to = state.domain.tasks.find((t) => t.id === depPopover.toId);
+            if (!from || !to) return null;
+            const dep = to.dependencies.find((d) => d.taskId === from.id);
+            if (!dep) return null;
+            return (
+              <DependencyPopover
+                x={depPopover.x}
+                y={depPopover.y}
+                fromTask={from}
+                toTask={to}
+                currentType={dep.type}
+                currentLag={dep.lagDays}
+                onApply={(type, lag) => {
+                  onUpdateDependency(from.id, to.id, type, lag);
+                  setDepPopover(null);
+                  showHint('Link updated');
+                }}
+                onDelete={() => {
+                  onRemoveDependency(from.id, to.id);
+                  setDepPopover(null);
+                  showHint('Link removed');
+                }}
+                onClose={() => setDepPopover(null)}
+              />
+            );
+          })()
+        : null}
+
+      {/* Visual: a transparent placeholder for the bottom (impact strip is rendered by App outside the panel for stacking) */}
+      <div style={{ display: showImpactStrip ? 'block' : 'none' }} />
+    </section>
   );
 }

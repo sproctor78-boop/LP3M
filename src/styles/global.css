@@ -1,71 +1,270 @@
+/* ==========================================================================
+   Ripple global styles
+   ==========================================================================
+   Resets, typography defaults, and shared base styles for buttons, inputs,
+   and other primitives. Component-specific styles live in layout.css.
+   ========================================================================== */
+
 @import './tokens.css';
 @import './layout.css';
 
-* { box-sizing: border-box; }
-html, body, #root { height: 100%; margin: 0; }
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  overflow: hidden;
+}
+
 body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 13.5px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
-button, input, select { font: inherit; }
-button { cursor: pointer; }
-button:disabled { cursor: not-allowed; opacity: 0.6; }
 
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+::selection {
+  background: var(--accent);
+  color: white;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* ---- Base button variants --------------------------------------------- */
 .btn {
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--ink-2);
+  padding: 7px 12px;
   border-radius: var(--radius-sm);
-  padding: 7px 11px;
+  font-size: 12.5px;
+  font-weight: 500;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.btn:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.btn-apply {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: white;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
   font-size: 12.5px;
   font-weight: 600;
 }
-.btn:hover { border-color: var(--border-strong); background: var(--surface-2); }
-.btn.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); }
-.btn.primary:hover { background: var(--accent); border-color: var(--accent); }
-.btn.danger { color: var(--breach); border-color: var(--breach); }
+.btn-apply:hover {
+  filter: brightness(1.08);
+}
+.btn-apply:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 
-.pill {
+.btn-cancel {
   border: 1px solid var(--border);
-  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-2);
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.btn-cancel:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+
+.btn-danger {
+  border: 1px solid var(--breach-border);
+  background: var(--surface);
+  color: var(--breach);
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.btn-danger:hover {
+  background: var(--breach-soft);
+}
+
+.btn.active,
+.btn-cancel.active {
+  background: var(--critical);
+  color: white;
+  border-color: var(--critical);
+}
+.btn.active:hover {
+  background: var(--critical);
+  filter: brightness(1.05);
+}
+
+/* ---- Form inputs ------------------------------------------------------ */
+input[type='text'],
+input[type='date'],
+input[type='number'],
+select,
+textarea {
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  width: 100%;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+input:disabled,
+select:disabled,
+textarea:disabled {
   background: var(--surface-2);
   color: var(--ink-muted);
+  cursor: not-allowed;
+}
+
+/* ---- Pills & badges --------------------------------------------------- */
+.pill {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 10px;
+  padding: 4px 11px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: var(--radius-pill);
+  color: var(--ink-muted);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #16a34a;
+}
+.pill.warn .pill-dot {
+  background: var(--forecast);
+}
+.pill.warn {
+  color: var(--forecast);
+  background: var(--forecast-soft);
+  border-color: var(--forecast-border);
+}
+.pill.bad .pill-dot {
+  background: var(--breach-border);
+}
+.pill.bad {
+  color: var(--breach);
+  background: var(--breach-soft);
+  border-color: var(--breach-border);
+}
+
+.badge {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--ink-muted);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
-.pill-dot { width: 7px; height: 7px; border-radius: 50%; background: #16a34a; }
-.pill.warn .pill-dot { background: var(--forecast); }
-.pill.bad .pill-dot { background: var(--breach); }
+.badge.critical {
+  background: var(--ink);
+  color: white;
+  border-color: var(--ink);
+}
+.badge.locked {
+  background: var(--locked-soft);
+  color: var(--locked);
+  border-color: var(--locked-soft);
+}
+.badge.milestone {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-soft);
+}
+.badge.breach {
+  background: var(--breach-soft);
+  color: var(--breach);
+  border-color: var(--breach-soft);
+}
 
-.field { display: grid; gap: 6px; }
-.field label {
+/* ---- Detail labels (used in inspector) -------------------------------- */
+.detail-label {
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-muted);
+  margin-bottom: 6px;
 }
-.field input, .field select {
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
+.detail-value {
   color: var(--ink);
-  padding: 8px 10px;
+  font-size: 13px;
 }
-.field input:focus, .field select:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
+
+/* ---- Utilities -------------------------------------------------------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

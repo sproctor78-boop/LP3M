@@ -1,30 +1,40 @@
+// =============================================================================
+// JSON export
+// =============================================================================
+
 import { AppDomainState } from '../domain/types';
-import { RippleExportV1 } from './exportSchema';
+import { DependencyExportRow, EXPORT_SCHEMA, RippleExportV1 } from './exportSchema';
 
 export function buildJsonExport(domain: AppDomainState): RippleExportV1 {
+  const dependencies: DependencyExportRow[] = domain.tasks.flatMap((task) =>
+    task.dependencies.map((dep) => ({
+      predecessorId: dep.taskId,
+      successorId: task.id,
+      type: dep.type,
+      lagDays: dep.lagDays,
+    })),
+  );
+
   return {
-    schema: 'ripple.export.v1',
+    schema: EXPORT_SCHEMA,
     exportedAt: new Date().toISOString(),
     workItems: domain.tasks,
-    dependencies: domain.tasks.flatMap((task) => task.dependencies.map((dependency) => ({
-      predecessorId: dependency.taskId,
-      successorId: task.id,
-      type: dependency.type,
-      lagDays: dependency.lagDays
-    }))),
+    dependencies,
     columns: domain.columns,
     swimlanes: domain.swimlanes,
-    workingCalendar: domain.workingCalendar
+    workingCalendar: domain.workingCalendar,
   };
 }
 
 export function downloadJsonExport(domain: AppDomainState): void {
-  const content = JSON.stringify(buildJsonExport(domain), null, 2);
-  const blob = new Blob([content], { type: 'application/json' });
+  const json = JSON.stringify(buildJsonExport(domain), null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = `ripple-export-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(anchor);
   anchor.click();
+  document.body.removeChild(anchor);
   URL.revokeObjectURL(url);
 }

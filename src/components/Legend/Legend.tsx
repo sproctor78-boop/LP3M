@@ -1,10 +1,21 @@
 export function Legend() {
   return (
     <div className="legend">
-      <span className="legend-item"><span className="swatch critical" /> Critical path</span>
-      <span className="legend-item"><span className="swatch forecast" /> Forecast movement</span>
-      <span className="legend-item"><span className="swatch locked" /> Locked date</span>
-      <span className="legend-item"><span className="swatch" /> Standard task</span>
+      <div className="legend-item">
+        <span className="legend-swatch critical" /> Critical path
+      </div>
+      <div className="legend-item">
+        <span className="legend-swatch changed" /> Directly changed
+      </div>
+      <div className="legend-item">
+        <span className="legend-swatch forecast" /> Forecast-adjusted
+      </div>
+      <div className="legend-item">
+        <span className="legend-swatch breach" /> Constraint breach
+      </div>
+      <div className="legend-item">
+        <span className="legend-swatch locked" /> Locked
+      </div>
     </div>
   );
 }

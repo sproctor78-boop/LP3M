@@ -1,63 +1,107 @@
-import { ForecastResult, WorkItem } from '../domain/types';
+// =============================================================================
+// Forecast engine
+// =============================================================================
+// Apply a proposed change to a single task, propagate downstream, and diff
+// against the original snapshot to produce a complete impact report.
+// =============================================================================
+
+import {
+  ForecastResult,
+  ImpactCategory,
+  ProposedChange,
+  TaskMovement,
+  WorkItem,
+} from '../domain/types';
 import { addDays, diffDays } from './dateUtils';
 import { computeLinkedTasks, deepCopyTasks } from './dependencyEngine';
-import { detectConstraintIssues, recomputeSchedule } from './scheduleEngine';
+import {
+  computeCriticalPathAndFloat,
+  detectConstraintIssues,
+  forwardPass,
+} from './scheduleEngine';
 
 interface InternalTask extends WorkItem {
-  directlyChanged?: boolean;
+  _directlyChanged?: boolean;
 }
 
-export function forecast(tasks: WorkItem[], change: { taskId: string; newStartDate: string; newEndDate: string }): ForecastResult | null {
-  const proposedTasks = deepCopyTasks(tasks) as InternalTask[];
-  const target = proposedTasks.find((task) => task.id === change.taskId);
+export function forecast(
+  originalTasks: WorkItem[],
+  change: ProposedChange,
+): ForecastResult | null {
+  const proposed = deepCopyTasks(originalTasks) as InternalTask[];
+  const target = proposed.find((t) => t.id === change.taskId);
   if (!target) return null;
 
-  const original = new Map(tasks.map((task) => [task.id, { startDate: task.startDate, endDate: task.endDate, criticalPath: !!task.criticalPath }]));
+  // Capture pre-state
+  const before = new Map(
+    originalTasks.map((t) => [
+      t.id,
+      { startDate: t.startDate, endDate: t.endDate, criticalPath: !!t.criticalPath },
+    ]),
+  );
+
   const oldStartDate = target.startDate;
   const oldEndDate = target.endDate;
 
   target.startDate = change.newStartDate;
   target.endDate = change.newEndDate;
   if (!target.isMilestone && !target.isParent) {
-    target.durationDays = Math.max(1, diffDays(change.newStartDate, change.newEndDate) + 1);
+    target.durationDays = diffDays(change.newStartDate, change.newEndDate) + 1;
   }
-  target.directlyChanged = true;
+  target._directlyChanged = true;
 
-  recomputeSchedule(proposedTasks);
-  proposedTasks.forEach((task) => delete task.directlyChanged);
+  // Propagate
+  forwardPass(proposed);
+  const newProjectFinish = computeCriticalPathAndFloat(proposed);
+  const { breaches, risks } = detectConstraintIssues(proposed);
+  const linkedSet = computeLinkedTasks(proposed, change.taskId);
 
-  const { breaches, risks } = detectConstraintIssues(proposedTasks);
-  const linkedSet = computeLinkedTasks(proposedTasks, change.taskId);
-  const affectedTasks = [...linkedSet]
-    .map((id) => {
-      const proposed = proposedTasks.find((task) => task.id === id);
-      const before = original.get(id);
-      if (!proposed || !before) return null;
-      if (proposed.startDate === before.startDate && proposed.endDate === before.endDate) return null;
-      return {
+  // Diff: which linked tasks actually moved?
+  const affectedTasks: TaskMovement[] = [];
+  const linkedButUnaffected: string[] = [];
+  linkedSet.forEach((id) => {
+    const t = proposed.find((x) => x.id === id);
+    const orig = before.get(id);
+    if (!t || !orig) return;
+    if (t.startDate !== orig.startDate || t.endDate !== orig.endDate) {
+      affectedTasks.push({
         taskId: id,
-        oldStartDate: before.startDate,
-        oldEndDate: before.endDate,
-        newStartDate: proposed.startDate,
-        newEndDate: proposed.endDate,
-        shiftDays: diffDays(before.endDate, proposed.endDate)
-      };
-    })
-    .filter((movement): movement is NonNullable<typeof movement> => movement !== null);
+        oldStartDate: orig.startDate,
+        oldEndDate: orig.endDate,
+        newStartDate: t.startDate,
+        newEndDate: t.endDate,
+        shiftDays: diffDays(orig.endDate, t.endDate),
+      });
+    } else {
+      linkedButUnaffected.push(id);
+    }
+  });
 
-  const linkedButUnaffected = [...linkedSet].filter((id) => !affectedTasks.some((movement) => movement.taskId === id));
-  const oldProjectFinish = tasks.reduce((max, task) => (task.endDate > max ? task.endDate : max), '0000-00-00');
-  const newProjectFinish = proposedTasks.reduce((max, task) => (task.endDate > max ? task.endDate : max), '0000-00-00');
-  const criticalPathChanged = proposedTasks.some((task) => original.get(task.id)?.criticalPath !== !!task.criticalPath);
-  const criticalPathAffected = !!proposedTasks.find((task) => task.id === change.taskId)?.criticalPath || affectedTasks.some((movement) => proposedTasks.find((task) => task.id === movement.taskId)?.criticalPath);
+  const oldProjectFinish = originalTasks.reduce(
+    (max, t) => (t.endDate > max ? t.endDate : max),
+    '0000-00-00',
+  );
 
-  const categories: string[] = [];
-  if (affectedTasks.length > 0) categories.push('dependency_impact');
-  if (breaches.length > 0) categories.push('constraint_breach');
-  if (risks.length > 0) categories.push('constraint_risk');
-  if (criticalPathAffected) categories.push('critical_path_impact');
-  if (oldProjectFinish !== newProjectFinish) categories.push('end_date_impact');
-  if (categories.length === 0) categories.push('local_impact');
+  const criticalPathChanged = proposed.some(
+    (t) => !!t.criticalPath !== !!before.get(t.id)?.criticalPath,
+  );
+  const changedNow = proposed.find((t) => t.id === change.taskId);
+  const criticalPathAffected =
+    !!changedNow?.criticalPath ||
+    affectedTasks.some((a) => !!proposed.find((t) => t.id === a.taskId)?.criticalPath);
+
+  const impactCategories: ImpactCategory[] = [];
+  if (affectedTasks.length) impactCategories.push('dependency_impact');
+  if (risks.length) impactCategories.push('constraint_risk');
+  if (breaches.length) impactCategories.push('constraint_breach');
+  if (criticalPathAffected) impactCategories.push('critical_path_impact');
+  if (newProjectFinish !== oldProjectFinish) impactCategories.push('end_date_impact');
+  if (impactCategories.length === 0) impactCategories.push('local_impact');
+
+  // Strip internal flag before exposing
+  proposed.forEach((t) => {
+    delete (t as InternalTask)._directlyChanged;
+  });
 
   return {
     changedTaskId: change.taskId,
@@ -65,9 +109,9 @@ export function forecast(tasks: WorkItem[], change: { taskId: string; newStartDa
     oldEndDate,
     newStartDate: change.newStartDate,
     newEndDate: change.newEndDate,
-    proposedTasks,
+    proposedTasks: proposed,
+    linkedTasks: Array.from(linkedSet),
     affectedTasks,
-    linkedTasks: [...linkedSet],
     linkedButUnaffected,
     constraintBreaches: breaches,
     constraintRisks: risks,
@@ -76,16 +120,24 @@ export function forecast(tasks: WorkItem[], change: { taskId: string; newStartDa
     oldProjectFinish,
     newProjectFinish,
     forecastShiftDays: diffDays(oldProjectFinish, newProjectFinish),
-    impactCategories: categories
+    impactCategories,
   };
 }
 
-export function moveTaskByDays(tasks: WorkItem[], taskId: string, days: number): ForecastResult | null {
-  const task = tasks.find((candidate) => candidate.id === taskId);
+/**
+ * Convenience: forecast moving a task by N days (positive = later).
+ * Returns null if the task is locked or missing.
+ */
+export function moveTaskByDays(
+  tasks: WorkItem[],
+  taskId: string,
+  days: number,
+): ForecastResult | null {
+  const task = tasks.find((t) => t.id === taskId);
   if (!task || task.locked) return null;
   return forecast(tasks, {
     taskId,
     newStartDate: addDays(task.startDate, days),
-    newEndDate: addDays(task.endDate, days)
+    newEndDate: addDays(task.endDate, days),
   });
 }

@@ -1,46 +1,68 @@
+// =============================================================================
+// Schedule engine
+// =============================================================================
+// CPM-style forward pass and backward pass extended with parent-task semantics:
+//
+//   • A parent task participates in the dep graph using its own deps; its
+//     endDate is rolled up from its children as they are scheduled.
+//   • A child task inherits its parent's startDate as an earliest-start floor.
+//   • A directly-changed task (during a drag) is not pulled back by its
+//     predecessor — the user's drag wins.
+//
+// `recomputeSchedule` is the entry point: forward pass, then backward pass.
+// It returns the same array it was given (mutated) for convenience, but always
+// pass a deep copy in if the caller needs the original preserved.
+// =============================================================================
+
 import { ConstraintIssue, WorkItem } from '../domain/types';
 import { addDays, diffDays } from './dateUtils';
-
-function isAfterOrUnset(candidate: string, current: string | null): boolean {
-  return current === null || candidate > current;
-}
-
 import { topoSort } from './dependencyEngine';
 
 interface InternalTask extends WorkItem {
-  latestFinish?: string;
-  latestStart?: string;
-  rollupInitialised?: boolean;
-  directlyChanged?: boolean;
+  /** Set during a forecast: this task's user-chosen dates should not be moved. */
+  _directlyChanged?: boolean;
+  /** Backward-pass scratch fields. */
+  _LS?: string;
+  _LF?: string;
+  /** Used during forward pass to seed parent rollup on first child. */
+  _rollupInit?: boolean;
 }
 
+/**
+ * Grow a parent's running rollup as children are scheduled. First child seeds
+ * the window; later children extend it.
+ */
 function bumpParent(parent: InternalTask | undefined, child: InternalTask): void {
   if (!parent) return;
-  if (!parent.rollupInitialised) {
+  if (!parent._rollupInit) {
     parent.startDate = child.startDate;
     parent.endDate = child.endDate;
-    parent.rollupInitialised = true;
+    parent._rollupInit = true;
     return;
   }
   if (child.startDate < parent.startDate) parent.startDate = child.startDate;
   if (child.endDate > parent.endDate) parent.endDate = child.endDate;
 }
 
-export function forwardPass(tasks: WorkItem[]): WorkItem[] {
+export function forwardPass(tasks: WorkItem[]): void {
   const internal = tasks as InternalTask[];
-  const map = new Map(internal.map((task) => [task.id, task]));
-  const sorted = topoSort(internal) as InternalTask[];
+  const map = new Map(internal.map((t) => [t.id, t]));
+  const { sorted } = topoSort(internal);
 
-  internal.forEach((task) => {
-    if (task.isParent) task.rollupInitialised = false;
+  // Mark every parent as "rollup uninitialised" so its dates rebuild from children.
+  internal.forEach((t) => {
+    if (t.isParent) t._rollupInit = false;
   });
 
-  sorted.forEach((task) => {
-    if (task.locked || task.directlyChanged) {
+  (sorted as InternalTask[]).forEach((task) => {
+    if (task.locked) {
       if (task.parentId) bumpParent(map.get(task.parentId), task);
       return;
     }
-
+    if (task._directlyChanged) {
+      if (task.parentId) bumpParent(map.get(task.parentId), task);
+      return;
+    }
     if (task.constraint?.type === 'must_start_on' && task.constraint.hard) {
       task.startDate = task.constraint.date;
       task.endDate = addDays(task.startDate, Math.max(0, task.durationDays - 1));
@@ -49,150 +71,222 @@ export function forwardPass(tasks: WorkItem[]): WorkItem[] {
     }
 
     let earliest: string | null = null;
-    task.dependencies.forEach((dependency) => {
-      const predecessor = map.get(dependency.taskId);
-      if (!predecessor) return;
-      const candidate = dependency.type === 'start_to_start'
-        ? addDays(predecessor.startDate, dependency.lagDays)
-        : addDays(predecessor.endDate, dependency.lagDays + 1);
-      if (isAfterOrUnset(candidate, earliest)) earliest = candidate;
-    });
-
-    if (task.parentId) {
-      const parent = map.get(task.parentId);
-      if (parent && isAfterOrUnset(parent.startDate, earliest)) earliest = parent.startDate;
+    for (const dep of task.dependencies) {
+      const pred = map.get(dep.taskId);
+      if (!pred) continue;
+      const candidate =
+        dep.type === 'start_to_start'
+          ? addDays(pred.startDate, dep.lagDays)
+          : addDays(pred.endDate, dep.lagDays + 1);
+      if (earliest === null || candidate > earliest) earliest = candidate;
     }
 
-    if (task.constraint?.type === 'start_no_earlier_than' && isAfterOrUnset(task.constraint.date, earliest)) {
-      earliest = task.constraint.date;
+    // Children are bounded below by their parent's startDate.
+    if (task.parentId) {
+      const parent = map.get(task.parentId);
+      if (parent && (earliest === null || parent.startDate > earliest)) {
+        earliest = parent.startDate;
+      }
+    }
+
+    if (task.constraint?.type === 'start_no_earlier_than') {
+      if (earliest === null || task.constraint.date > earliest) {
+        earliest = task.constraint.date;
+      }
     }
 
     if (task.isParent) {
+      // Parent: take earliest from its own deps; endDate rebuilds from children.
       if (earliest !== null && earliest > task.startDate) task.startDate = earliest;
       task.endDate = task.startDate;
-      task.rollupInitialised = false;
+      task._rollupInit = false;
     } else {
       if (earliest !== null && earliest > task.startDate) {
         task.startDate = earliest;
-        task.endDate = task.isMilestone ? earliest : addDays(earliest, Math.max(0, task.durationDays - 1));
+        task.endDate = task.isMilestone
+          ? earliest
+          : addDays(earliest, Math.max(0, task.durationDays - 1));
       }
       if (task.parentId) bumpParent(map.get(task.parentId), task);
     }
   });
 
-  internal.forEach((task) => {
-    if (task.isParent) {
-      task.durationDays = Math.max(0, diffDays(task.startDate, task.endDate) + 1);
-      delete task.rollupInitialised;
+  // Final tidy: parents with children get a clean durationDays.
+  internal.forEach((t) => {
+    if (!t.isParent) return;
+    delete t._rollupInit;
+    if (t.startDate && t.endDate) {
+      t.durationDays = Math.max(0, diffDays(t.startDate, t.endDate) + 1);
     }
   });
-
-  return tasks;
 }
 
 export function computeCriticalPathAndFloat(tasks: WorkItem[]): string {
   const internal = tasks as InternalTask[];
-  const map = new Map(internal.map((task) => [task.id, task]));
-  const sorted = topoSort(internal) as InternalTask[];
-  const projectEnd = internal.reduce((max, task) => (task.endDate > max ? task.endDate : max), '0000-00-00');
-  const successors = new Map(internal.map((task) => [task.id, [] as { id: string; type: string; lag: number }[]]));
+  const map = new Map(internal.map((t) => [t.id, t]));
+  const { sorted } = topoSort(internal);
+  const projectEnd = internal.reduce(
+    (max, t) => (t.endDate > max ? t.endDate : max),
+    '0000-00-00',
+  );
 
-  internal.forEach((task) => {
-    task.dependencies.forEach((dependency) => {
-      successors.get(dependency.taskId)?.push({ id: task.id, type: dependency.type, lag: dependency.lagDays });
+  // Build successors (dependency edges only — parent edges are handled separately below).
+  const succ = new Map<string, { id: string; type: string; lag: number }[]>(
+    internal.map((t) => [t.id, []]),
+  );
+  internal.forEach((t) => {
+    t.dependencies.forEach((dep) => {
+      succ.get(dep.taskId)?.push({ id: t.id, type: dep.type, lag: dep.lagDays });
     });
   });
 
-  for (let index = sorted.length - 1; index >= 0; index -= 1) {
-    const task = sorted[index];
-    const taskSuccessors = successors.get(task.id) ?? [];
-    let latestFinish: string | null = null;
-
-    if (taskSuccessors.length === 0) {
-      latestFinish = projectEnd;
+  // Backward pass
+  for (let i = sorted.length - 1; i >= 0; i -= 1) {
+    const t = sorted[i] as InternalTask;
+    const ss = succ.get(t.id) ?? [];
+    let LF: string | null = null;
+    if (ss.length === 0) {
+      LF = projectEnd;
     } else {
-      taskSuccessors.forEach((successor) => {
-        const successorTask = map.get(successor.id);
-        if (!successorTask?.latestStart) return;
-        const candidate = successor.type === 'start_to_start'
-          ? addDays(successorTask.latestStart, -successor.lag + Math.max(0, task.durationDays - 1))
-          : addDays(successorTask.latestStart, -successor.lag - 1);
-        if (!latestFinish || candidate < latestFinish) latestFinish = candidate;
+      ss.forEach((s) => {
+        const sTask = map.get(s.id);
+        if (!sTask?._LS) return;
+        const candidate =
+          s.type === 'start_to_start'
+            ? addDays(sTask._LS, -s.lag + Math.max(0, t.durationDays - 1))
+            : addDays(sTask._LS, -s.lag - 1);
+        if (LF === null || candidate < LF) LF = candidate;
       });
     }
-
-    task.latestFinish = latestFinish ?? projectEnd;
-    task.latestStart = addDays(task.latestFinish, -Math.max(0, task.durationDays - 1));
-    task.floatDays = diffDays(task.startDate, task.latestStart);
-    task.criticalPath = task.floatDays <= 0;
+    t._LF = LF ?? projectEnd;
+    t._LS = addDays(t._LF, -Math.max(0, t.durationDays - 1));
+    t.floatDays = diffDays(t.startDate, t._LS);
+    t.criticalPath = t.floatDays <= 0;
   }
 
-  internal.forEach((task) => {
-    if (!task.parentId) return;
-    const parent = map.get(task.parentId);
+  // Children of critical parents are critical too — a delay in any child
+  // shifts the parent's rolled-up endDate, which propagates downstream.
+  internal.forEach((t) => {
+    if (!t.parentId) return;
+    const parent = map.get(t.parentId);
     if (!parent) return;
-    if ((parent.floatDays ?? 0) < (task.floatDays ?? 0)) {
-      task.floatDays = parent.floatDays;
-      task.criticalPath = (task.floatDays ?? 0) <= 0;
+    if ((parent.floatDays ?? 0) < (t.floatDays ?? 0)) {
+      t.floatDays = parent.floatDays;
+      t.criticalPath = (t.floatDays ?? 0) <= 0;
     }
   });
 
   return projectEnd;
 }
 
-export function detectConstraintIssues(tasks: WorkItem[]): { breaches: ConstraintIssue[]; risks: ConstraintIssue[] } {
-  const map = new Map(tasks.map((task) => [task.id, task]));
+/**
+ * Run forward pass + backward pass on the given task array (mutates).
+ * Pass a deep copy in if you need the original preserved.
+ */
+export function recomputeSchedule(tasks: WorkItem[]): WorkItem[] {
+  forwardPass(tasks);
+  computeCriticalPathAndFloat(tasks);
+  return tasks;
+}
+
+// =============================================================================
+// Constraint detection
+// =============================================================================
+
+export function detectConstraintIssues(tasks: WorkItem[]): {
+  breaches: ConstraintIssue[];
+  risks: ConstraintIssue[];
+} {
+  const map = new Map(tasks.map((t) => [t.id, t]));
   const breaches: ConstraintIssue[] = [];
   const risks: ConstraintIssue[] = [];
 
-  tasks.forEach((task) => {
-    const constraint = task.constraint;
-    if (!constraint) return;
+  // 1) Standard constraints
+  tasks.forEach((t) => {
+    const c = t.constraint;
+    if (!c) return;
 
-    if (constraint.type === 'finish_no_later_than') {
-      if (task.endDate > constraint.date && constraint.hard) {
-        breaches.push({ taskId: task.id, constraintType: constraint.type, constraintDate: constraint.date, breachDays: diffDays(constraint.date, task.endDate) });
-      } else if (diffDays(task.endDate, constraint.date) <= 2) {
-        risks.push({ taskId: task.id, constraintType: constraint.type, constraintDate: constraint.date });
+    if (c.type === 'finish_no_later_than') {
+      if (t.endDate > c.date && c.hard) {
+        breaches.push({
+          taskId: t.id,
+          constraintType: c.type,
+          constraintDate: c.date,
+          forecastEndDate: t.endDate,
+          breachDays: diffDays(c.date, t.endDate),
+        });
+      } else if (t.endDate <= c.date && diffDays(t.endDate, c.date) <= 2) {
+        risks.push({
+          taskId: t.id,
+          constraintType: c.type,
+          constraintDate: c.date,
+          forecastEndDate: t.endDate,
+        });
+      } else if (t.endDate > c.date) {
+        risks.push({
+          taskId: t.id,
+          constraintType: c.type,
+          constraintDate: c.date,
+          forecastEndDate: t.endDate,
+        });
       }
-    }
-
-    if (constraint.type === 'must_finish_on' && task.endDate !== constraint.date) {
-      breaches.push({ taskId: task.id, constraintType: constraint.type, constraintDate: constraint.date, breachDays: diffDays(constraint.date, task.endDate) });
-    }
-
-    if (constraint.type === 'must_start_on' && task.startDate !== constraint.date) {
-      breaches.push({ taskId: task.id, constraintType: constraint.type, constraintDate: constraint.date, breachDays: diffDays(constraint.date, task.startDate) });
+    } else if (c.type === 'must_finish_on') {
+      if (t.endDate !== c.date) {
+        breaches.push({
+          taskId: t.id,
+          constraintType: c.type,
+          constraintDate: c.date,
+          forecastEndDate: t.endDate,
+          breachDays: diffDays(c.date, t.endDate),
+        });
+      }
+    } else if (c.type === 'must_start_on') {
+      if (t.startDate !== c.date) {
+        breaches.push({
+          taskId: t.id,
+          constraintType: c.type,
+          constraintDate: c.date,
+          forecastStartDate: t.startDate,
+          breachDays: diffDays(c.date, t.startDate),
+        });
+      }
+    } else if (c.type === 'start_no_earlier_than') {
+      if (t.startDate < c.date) {
+        breaches.push({
+          taskId: t.id,
+          constraintType: c.type,
+          constraintDate: c.date,
+          forecastStartDate: t.startDate,
+          breachDays: diffDays(t.startDate, c.date),
+        });
+      }
     }
   });
 
-  tasks.forEach((task) => {
-    const fixed = task.locked || task.constraint?.hard;
-    if (!fixed) return;
-    task.dependencies.forEach((dependency) => {
-      const predecessor = map.get(dependency.taskId);
-      if (!predecessor) return;
-      const requiredStartDate = dependency.type === 'start_to_start'
-        ? addDays(predecessor.startDate, dependency.lagDays)
-        : addDays(predecessor.endDate, dependency.lagDays + 1);
-      if (requiredStartDate > task.startDate) {
+  // 2) Dependency conflicts: a locked or hard-constrained task whose predecessor
+  //    would now finish after its fixed start.
+  tasks.forEach((t) => {
+    const isFixed = t.locked || t.constraint?.hard;
+    if (!isFixed) return;
+    t.dependencies.forEach((dep) => {
+      const pred = map.get(dep.taskId);
+      if (!pred) return;
+      const required =
+        dep.type === 'start_to_start'
+          ? addDays(pred.startDate, dep.lagDays)
+          : addDays(pred.endDate, dep.lagDays + 1);
+      if (required > t.startDate) {
         breaches.push({
-          taskId: task.id,
-          predecessorId: predecessor.id,
+          taskId: t.id,
+          predecessorId: pred.id,
           constraintType: 'dependency_conflict',
-          requiredStartDate,
-          actualStartDate: task.startDate,
-          breachDays: diffDays(task.startDate, requiredStartDate)
+          requiredStartDate: required,
+          actualStartDate: t.startDate,
+          breachDays: diffDays(t.startDate, required),
         });
       }
     });
   });
 
   return { breaches, risks };
-}
-
-export function recomputeSchedule(tasks: WorkItem[]): WorkItem[] {
-  forwardPass(tasks);
-  computeCriticalPathAndFloat(tasks);
-  return tasks;
 }

@@ -1,106 +1,116 @@
-import { BoardColumn, ForecastResult, Swimlane, WorkItem } from '../../domain/types';
-import { formatNice } from '../../engine/dateUtils';
-import { buildImpactNarrative } from '../../engine/impactEngine';
+import { AppState, WorkItem } from '../../domain/types';
+import { TaskInspector } from './TaskInspector';
+import { ImpactPanel } from './ImpactPanel';
 
 interface Props {
-  task: WorkItem;
-  tasks: WorkItem[];
-  columns: BoardColumn[];
-  swimlanes: Swimlane[];
-  forecast: ForecastResult | null;
+  state: AppState;
+  selectedTask: WorkItem | null;
   onClose: () => void;
-  onPreviewDates: (taskId: string, startDate: string, endDate: string) => void;
+  onApplyForecast: () => void;
+  onCancelForecast: () => void;
+  onPreviewDates: (taskId: string, start: string, end: string) => void;
   onUpdateTask: (taskId: string, patch: Partial<WorkItem>) => void;
+  onSetParent: (taskId: string, parentId: string | null) => void;
+  onConvertToParent: (taskId: string) => void;
+  onDeleteTask: (taskId: string) => void;
+  onJumpToTask: (taskId: string) => void;
+  onMoveTaskStatus: (taskId: string, status: string) => void;
+  onMoveTaskSwimlane: (taskId: string, swimlane: string) => void;
+  onAddSubtask: (parentTaskId: string) => void;
 }
 
-export function InspectorDrawer({ task, tasks, columns, swimlanes, forecast, onClose, onPreviewDates, onUpdateTask }: Props) {
-  const predecessors = task.dependencies.map((dependency) => tasks.find((candidate) => candidate.id === dependency.taskId)).filter(Boolean) as WorkItem[];
-  const successors = tasks.filter((candidate) => candidate.dependencies.some((dependency) => dependency.taskId === task.id));
-  const relevantForecast = forecast?.changedTaskId === task.id ? forecast : null;
+export function InspectorDrawer({
+  state,
+  selectedTask,
+  onClose,
+  onApplyForecast,
+  onCancelForecast,
+  onPreviewDates,
+  onUpdateTask,
+  onSetParent,
+  onConvertToParent,
+  onDeleteTask,
+  onJumpToTask,
+  onMoveTaskStatus,
+  onMoveTaskSwimlane,
+  onAddSubtask,
+}: Props) {
+  const fc = state.pendingForecast;
+  let kicker = 'Inspector';
+  let title = 'Select a task';
+
+  if (fc) {
+    kicker = 'Schedule impact';
+    title = state.domain.tasks.find((t) => t.id === fc.changedTaskId)?.title ?? 'Forecast';
+  } else if (selectedTask) {
+    kicker = 'Task Detail';
+    title = selectedTask.title;
+  }
+
+  let body: JSX.Element;
+  if (fc) {
+    body = (
+      <ImpactPanel
+        forecastResult={fc}
+        tasks={state.domain.tasks}
+        onApply={onApplyForecast}
+        onCancel={onCancelForecast}
+      />
+    );
+  } else if (selectedTask) {
+    body = (
+      <TaskInspector
+        state={state}
+        task={selectedTask}
+        onPreviewDates={onPreviewDates}
+        onUpdateTask={onUpdateTask}
+        onSetParent={onSetParent}
+        onConvertToParent={onConvertToParent}
+        onDeleteTask={onDeleteTask}
+        onJumpToTask={onJumpToTask}
+        onMoveTaskStatus={onMoveTaskStatus}
+        onMoveTaskSwimlane={onMoveTaskSwimlane}
+        onAddSubtask={onAddSubtask}
+      />
+    );
+  } else {
+    body = (
+      <div className="drawer-empty">
+        <svg
+          className="drawer-empty-icon"
+          viewBox="0 0 32 32"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        >
+          <rect x="4" y="6" width="24" height="20" rx="2" />
+          <path d="M4 12h24M10 18h6M10 22h10" />
+        </svg>
+        <strong>Drag a task bar to forecast impact</strong>
+        Move or resize any bar on the timeline. Ripple will calculate the downstream effect on
+        dependencies, constraints, and the forecast finish date.
+      </div>
+    );
+  }
 
   return (
-    <aside className="drawer" aria-label="Task inspector">
+    <aside className={`drawer ${state.view.drawerOpen ? 'open' : ''}`}>
       <div className="drawer-header">
-        <button className="btn drawer-close" onClick={onClose} aria-label="Close inspector">×</button>
-        <div className="drawer-kicker">Task detail</div>
-        <div className="drawer-title">{task.title}</div>
+        <button
+          type="button"
+          className="drawer-close"
+          aria-label="Close drawer"
+          title="Close (Esc)"
+          onClick={onClose}
+        >
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <path d="M2 2 L12 12 M12 2 L2 12" strokeLinecap="round" />
+          </svg>
+        </button>
+        <div className="drawer-kicker">{kicker}</div>
+        <div className="drawer-title">{title}</div>
       </div>
-      <div className="drawer-body">
-        {relevantForecast && (
-          <section className="drawer-section" style={{ background: 'var(--forecast-soft)', margin: '-4px', padding: 14, borderRadius: 'var(--radius-md)' }}>
-            <div className="drawer-kicker">Forecast impact</div>
-            <div>{buildImpactNarrative(relevantForecast, tasks)}</div>
-          </section>
-        )}
-
-        <section className="drawer-section">
-          <div className="drawer-grid">
-            <div className="field">
-              <label>Start</label>
-              <input
-                type="date"
-                value={task.startDate}
-                disabled={task.locked}
-                onChange={(event) => onPreviewDates(task.id, event.target.value, task.endDate)}
-              />
-            </div>
-            <div className="field">
-              <label>Finish</label>
-              <input
-                type="date"
-                value={task.endDate}
-                disabled={task.locked || task.isMilestone}
-                onChange={(event) => onPreviewDates(task.id, task.startDate, event.target.value)}
-              />
-            </div>
-          </div>
-          <div className="drawer-grid">
-            <div><div className="drawer-kicker">Duration</div><strong>{task.durationDays} day{task.durationDays === 1 ? '' : 's'}</strong></div>
-            <div><div className="drawer-kicker">Float</div><strong>{task.floatDays ?? '—'} day{task.floatDays === 1 ? '' : 's'}</strong></div>
-          </div>
-        </section>
-
-        <section className="drawer-section">
-          <div className="field">
-            <label>Board column</label>
-            <select value={task.status} onChange={(event) => onUpdateTask(task.id, { status: event.target.value })}>
-              {columns.map((column) => <option key={column.key} value={column.key}>{column.label}</option>)}
-            </select>
-          </div>
-          <div className="field">
-            <label>Swimlane</label>
-            <select value={task.swimlane} onChange={(event) => onUpdateTask(task.id, { swimlane: event.target.value })}>
-              {swimlanes.map((swimlane) => <option key={swimlane.key} value={swimlane.key}>{swimlane.label}</option>)}
-            </select>
-          </div>
-        </section>
-
-        <section className="drawer-section">
-          <div className="drawer-kicker">Critical path</div>
-          <div>{task.criticalPath ? 'Yes. Movement here may shift the forecast finish.' : `No. Current float is ${task.floatDays ?? '—'} days.`}</div>
-        </section>
-
-        <section className="drawer-section">
-          <div className="drawer-kicker">Dependencies</div>
-          <div>
-            <strong>Predecessors</strong>
-            {predecessors.length === 0 ? <p>No predecessor tasks.</p> : <ul>{predecessors.map((item) => <li key={item.id}>{item.id} · {item.title}</li>)}</ul>}
-          </div>
-          <div>
-            <strong>Successors</strong>
-            {successors.length === 0 ? <p>No successor tasks.</p> : <ul>{successors.map((item) => <li key={item.id}>{item.id} · {item.title}</li>)}</ul>}
-          </div>
-        </section>
-
-        <section className="drawer-section">
-          <div className="drawer-kicker">Constraint</div>
-          {task.constraint ? (
-            <div>{task.constraint.type.replace(/_/g, ' ')} · {formatNice(task.constraint.date)} · {task.constraint.hard ? 'Hard' : 'Advisory'}</div>
-          ) : (
-            <div>Flexible</div>
-          )}
-        </section>
-      </div>
+      <div className="drawer-body">{body}</div>
     </aside>
   );
 }

@@ -1,43 +1,96 @@
+/* ==========================================================================
+   Ripple design tokens
+   ==========================================================================
+   Single source of truth for colours, typography, spacing, shadows and the
+   overlay (z-index) scale. Components MUST reference these tokens rather
+   than inventing their own values.
+   ========================================================================== */
+
 :root {
+  /* -- surfaces & ink ----------------------------------------------------- */
   --bg: #f4f5f2;
   --surface: #ffffff;
   --surface-2: #fafaf7;
+  --surface-3: #f3f4ef;
   --ink: #0b1220;
   --ink-2: #2a3447;
   --ink-muted: #6b7484;
   --ink-faint: #9ca3af;
   --border: #e5e5df;
   --border-strong: #c9c8c0;
+  --border-emphatic: #0b1220;
+
+  /* -- semantic colours --------------------------------------------------- */
   --accent: #1b3a6b;
   --accent-soft: #dce3ee;
+  --accent-border: #1b3a6b;
+
   --forecast: #b45309;
   --forecast-soft: #fef3c7;
+  --forecast-border: #d97706;
+
   --breach: #991b1b;
   --breach-soft: #fee2e2;
+  --breach-border: #dc2626;
+
+  --risk: #92400e;
+  --risk-soft: #fef3c7;
+
   --critical: #c2410c;
+  --critical-soft: #fed7aa;
+
   --locked: #475569;
   --locked-soft: #e2e8f0;
 
-  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono: "SF Mono", "JetBrains Mono", Consolas, monospace;
+  /* -- typography --------------------------------------------------------- */
+  --font-display: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
 
+  /* -- radii -------------------------------------------------------------- */
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
-  --shadow-sm: 0 1px 2px rgba(11, 18, 32, 0.06);
-  --shadow-md: 0 8px 24px rgba(11, 18, 32, 0.08);
-  --shadow-lg: 0 24px 60px rgba(11, 18, 32, 0.18);
+  --radius-pill: 999px;
 
+  /* -- shadows ------------------------------------------------------------ */
+  --shadow-sm: 0 1px 2px rgba(11, 18, 32, 0.04), 0 1px 1px rgba(11, 18, 32, 0.03);
+  --shadow-md: 0 4px 12px rgba(11, 18, 32, 0.06), 0 2px 4px rgba(11, 18, 32, 0.04);
+  --shadow-lg: 0 12px 32px rgba(11, 18, 32, 0.1), 0 4px 8px rgba(11, 18, 32, 0.06);
+
+  /* -- spacing scale ------------------------------------------------------ */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* -- layout dimensions -------------------------------------------------- */
+  --header-height: 64px;
+  --row-height: 44px;
+  --subtask-row-height: 36px;
+  --swimlane-label-height: 32px;
+  --label-column-width: 260px;
+  --board-width: 420px;
+  --drawer-width: 420px;
+
+  /* -- timeline ----------------------------------------------------------- */
+  --day-width: 36px;
+
+  /* -- overlay scale ------------------------------------------------------
+     The single source of truth for layering. Components MUST reference these.
+     Never use a raw z-index value. */
   --z-base: 0;
-  --z-task: 10;
-  --z-annotation: 20;
-  --z-sticky: 30;
-  --z-controls: 40;
-  --z-popover: 50;
-  --z-panel: 60;
-  --z-strip: 70;
-  --z-modal: 80;
-  --z-drag: 90;
-  --z-toast: 100;
+  --z-task: 10;          /* task bars, milestones */
+  --z-annotation: 20;    /* today line, dep lines, forecast ghosts, breach markers */
+  --z-sticky: 30;        /* sticky timeline headers, sticky group labels */
+  --z-controls: 40;      /* local controls, dep handles, resize handles */
+  --z-popover: 50;       /* dep popover, column-rename input */
+  --z-panel: 60;         /* inspector drawer */
+  --z-strip: 70;         /* impact strip */
+  --z-modal: 80;         /* modal backdrops + modals */
+  --z-drag: 90;          /* active drag/draw layer */
+  --z-toast: 100;        /* hints/toasts */
 }
