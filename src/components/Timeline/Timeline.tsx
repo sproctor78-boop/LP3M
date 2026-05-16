@@ -51,6 +51,7 @@ interface Props {
   onMoveTaskStatus: (taskId: string, status: string) => void;
   onAddSwimlane: () => void;
   showImpactStrip: boolean;
+  onClearScrollToTask?: () => void;
 }
 
 interface DepPopoverState {
@@ -81,6 +82,7 @@ export function Timeline({
   onMoveTaskStatus,
   onAddSwimlane,
   showImpactStrip,
+  onClearScrollToTask,
 }: Props) {
   const ganttScrollRef = useRef<HTMLDivElement | null>(null);
   const taskListScrollRef = useRef<HTMLDivElement | null>(null);
@@ -137,6 +139,18 @@ export function Timeline({
       ganttEl.removeEventListener('scroll', syncFromGantt);
     };
   }, []);
+
+  // Scroll to a task when scrollToTaskId is set
+  useEffect(() => {
+    const taskId = state.view.scrollToTaskId;
+    if (!taskId || !ganttScrollRef.current) return;
+    const centreY = layout.taskCentreY.get(taskId);
+    if (centreY != null) {
+      ganttScrollRef.current.scrollTop = Math.max(0, centreY - 100);
+    }
+    onClearScrollToTask?.();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.view.scrollToTaskId]);
 
   // ESC closes the dep popover
   useEffect(() => {

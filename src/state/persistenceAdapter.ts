@@ -37,6 +37,7 @@ export function createInitialAppState(): AppState {
       collapsedGroups: {},
       selectedDep: null,
       taskListWidth: DEFAULT_TASK_LIST_WIDTH,
+      scrollToTaskId: null,
     },
     pendingForecast: null,
     pendingChange: null,
@@ -69,7 +70,7 @@ function migrateView(view: AppState['view']): AppState['view'] {
     typeof raw.taskListWidth === 'number' && raw.taskListWidth > 0
       ? (raw.taskListWidth as number)
       : DEFAULT_TASK_LIST_WIDTH;
-  return { ...view, mode, taskListWidth };
+  return { ...view, mode, taskListWidth, scrollToTaskId: null };
 }
 
 /**
@@ -116,11 +117,3 @@ export function saveAppState(state: AppState): void {
   }
 }
 
-export function resetAppState(): AppState {
-  try {
-    localStorage.removeItem(STORE_KEY);
-  } catch {
-    // ignore
-  }
-  return createInitialAppState();
-}

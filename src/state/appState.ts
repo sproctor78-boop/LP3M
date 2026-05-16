@@ -60,8 +60,8 @@ export type AppAction =
   | { type: 'deleteSwimlane'; key: string }
   // Calendar
   | { type: 'setWorkingCalendar'; highlightWeekends: boolean; holidays: string[] }
-  // Wholesale state replacement (reset, import)
-  | { type: 'replaceState'; state: AppState };
+  // Scroll target
+  | { type: 'setScrollToTask'; taskId: string | null };
 
 function withRecomputedTasks(state: AppState, nextTasks: WorkItem[]): AppState {
   return {
@@ -340,8 +340,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         },
       };
 
-    case 'replaceState':
-      return action.state;
+    case 'setScrollToTask':
+      return { ...state, view: { ...state.view, scrollToTaskId: action.taskId } };
 
     default: {
       // Exhaustiveness check

@@ -51,7 +51,7 @@ export function DependencyLines({
 
           const x1 = xOf(addDays(pred.endDate, 1));
           const x2 = xOf(task.startDate);
-          const midX = x1 + 6;
+          const midX = Math.max(x1 + 4, x2 - 10);
           const arrowX = x2 - 4;
           const d = `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${arrowX} ${y2}`;
           const arrow = `M ${x2 - 5} ${y2 - 3} L ${x2} ${y2} L ${x2 - 5} ${y2 + 3} z`;
