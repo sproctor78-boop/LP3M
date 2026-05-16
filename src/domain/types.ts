@@ -110,6 +110,8 @@ export interface AppViewState {
   selectedDep: { fromId: string; toId: string } | null;
   /** Width in pixels of the task-list panel inside the Timeline view. */
   taskListWidth: number;
+  /** When non-null, Timeline scrolls this task into view then clears the field. */
+  scrollToTaskId: string | null;
 }
 
 export interface TaskMovement {

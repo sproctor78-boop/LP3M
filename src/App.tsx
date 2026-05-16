@@ -1,10 +1,10 @@
-import { useEffect, useReducer, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import { appReducer } from './state/appState';
 import {
   loadAppState,
-  resetAppState,
   saveAppState,
 } from './state/persistenceAdapter';
+import { detectConstraintIssues } from './engine/constraintEngine';
 import { AppShell } from './components/AppShell/AppShell';
 import { Board } from './components/Board/Board';
 import { Timeline } from './components/Timeline/Timeline';
@@ -20,6 +20,7 @@ export function App() {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [taskModalParent, setTaskModalParent] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const breachCycleRef = useRef(0);
 
   // Persist on every state change (excluding pendingForecast — handled by adapter)
   useEffect(() => {
@@ -69,6 +70,19 @@ export function App() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  const handleBreachClick = () => {
+    const fc = state.pendingForecast;
+    const breachedIds = fc
+      ? fc.constraintBreaches.map((b) => b.taskId)
+      : detectConstraintIssues(state.domain.tasks).breaches.map((b) => b.taskId);
+    if (breachedIds.length === 0) return;
+    const idx = breachCycleRef.current % breachedIds.length;
+    breachCycleRef.current = (idx + 1) % breachedIds.length;
+    const taskId = breachedIds[idx];
+    dispatch({ type: 'selectTask', taskId, openDrawer: true });
+    dispatch({ type: 'setScrollToTask', taskId });
+  };
+
   const selectedTask =
     state.view.selectedTaskId
       ? state.domain.tasks.find((t) => t.id === state.view.selectedTaskId) ?? null
@@ -80,12 +94,7 @@ export function App() {
         state={state}
         onViewMode={(mode) => dispatch({ type: 'setViewMode', mode })}
         onToggleCritical={() => dispatch({ type: 'toggleCritical' })}
-        onReset={() => {
-          if (window.confirm('Reset to demo data? This will discard all changes.')) {
-            dispatch({ type: 'replaceState', state: resetAppState() });
-            showHint('Demo reset');
-          }
-        }}
+        onBreachClick={handleBreachClick}
         onOpenSettings={() => setShowSettings(true)}
       >
         <main className="workspace single-pane">
@@ -151,6 +160,7 @@ export function App() {
               }
               onAddSwimlane={() => dispatch({ type: 'addSwimlane' })}
               showImpactStrip={!!state.pendingForecast && !state.view.drawerOpen}
+              onClearScrollToTask={() => dispatch({ type: 'setScrollToTask', taskId: null })}
             />
           )}
         </main>

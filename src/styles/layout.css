@@ -1944,20 +1944,9 @@ body.splitter-dragging * {
 
 .task-bar-progress {
   position: absolute;
-  left: 0;
-  bottom: 0;
-  height: 4px;
-  background: rgba(0, 0, 0, 0.28);
-  border-radius: 0 0 6px 6px;
+  inset: 0;
+  border-radius: inherit;
   pointer-events: none;
-  transition: width 0.15s ease;
-}
-.task-bar.forecast .task-bar-progress {
-  background: rgba(180, 83, 9, 0.4);
-}
-.task-bar.subtask .task-bar-progress {
-  background: rgba(27, 58, 107, 0.35);
-  border-radius: 0 0 3px 3px;
 }
 .task-bar.parent .task-bar-progress,
 .task-bar.locked .task-bar-progress,

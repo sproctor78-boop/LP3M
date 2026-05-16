@@ -54,6 +54,7 @@ export function TaskBar({
 }: Props) {
   const widthDays = Math.max(1, diffDays(task.startDate, task.endDate) + 1);
   const widthPx = Math.max(8, widthDays * dayWidth - 2);
+  const progressPct = Math.min(100, Math.max(0, task.percentComplete));
 
   const onBarPointerDown = useBarDrag({
     dayWidth,
@@ -164,10 +165,12 @@ export function TaskBar({
           />
         </>
       ) : null}
-      {!ghost && task.percentComplete > 0 ? (
+      {!ghost && progressPct > 0 ? (
         <div
           className="task-bar-progress"
-          style={{ width: `${Math.min(100, Math.max(0, task.percentComplete))}%` }}
+          style={{
+            background: `linear-gradient(to right, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.18) ${progressPct}%, transparent ${progressPct}%, transparent 100%)`,
+          }}
           aria-hidden="true"
         />
       ) : null}

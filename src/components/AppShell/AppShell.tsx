@@ -9,7 +9,7 @@ interface Props {
   children: ReactNode;
   onViewMode: (mode: ViewMode) => void;
   onToggleCritical: () => void;
-  onReset: () => void;
+  onBreachClick?: () => void;
   onOpenSettings: () => void;
 }
 
@@ -23,7 +23,7 @@ export function AppShell({
   children,
   onViewMode,
   onToggleCritical,
-  onReset,
+  onBreachClick,
   onOpenSettings,
 }: Props) {
   const handleExport = () => {
@@ -56,7 +56,7 @@ export function AppShell({
               </button>
             ))}
           </div>
-          <StatusPill state={state} />
+          <StatusPill state={state} onBreachClick={onBreachClick} />
         </div>
 
         <div className="header-actions">
@@ -90,12 +90,6 @@ export function AppShell({
                 strokeLinecap="round"
               />
             </svg>
-          </button>
-          <button type="button" className="btn" onClick={onReset} title="Reset demo data">
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M2 8a6 6 0 1 0 1.76-4.24M2 3v3h3" />
-            </svg>
-            Reset
           </button>
         </div>
       </header>
