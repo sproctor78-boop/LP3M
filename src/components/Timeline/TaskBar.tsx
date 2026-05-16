@@ -164,6 +164,13 @@ export function TaskBar({
           />
         </>
       ) : null}
+      {!ghost && task.percentComplete > 0 ? (
+        <div
+          className="task-bar-progress"
+          style={{ width: `${Math.min(100, Math.max(0, task.percentComplete))}%` }}
+          aria-hidden="true"
+        />
+      ) : null}
     </div>
   );
 }

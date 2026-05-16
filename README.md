@@ -139,6 +139,15 @@ Netlify will pick the next push up automatically once connected.
 
 ## What's here in this version
 
+The interface offers two top-level views, switchable from the header:
+
+- **Timeline.** An MS-Project-style layout: a task list on the left (Task name,
+  Duration, % Complete) and the Gantt chart on the right. A draggable splitter
+  between them lets you adjust the ratio; the panes share a vertical scroll so
+  every list row lines up with its bar.
+- **Board.** A kanban-style view with editable columns, useful for status
+  triage independent of dates.
+
 | Feature                                  | Status   |
 | ---------------------------------------- | -------- |
 | Forward-pass scheduling                  | ✅       |
@@ -164,6 +173,8 @@ Netlify will pick the next push up automatically once connected.
 | Today line                               | ✅       |
 | Hint toasts                              | ✅       |
 | Escape / click-outside handling          | ✅       |
+| **MS-Project-style task list + splitter** | ✅       |
+| **% complete (editable, with bar overlay)** | ✅       |
 
 ### Known limitations (not yet implemented)
 

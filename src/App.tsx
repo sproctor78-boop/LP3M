@@ -74,14 +74,6 @@ export function App() {
       ? state.domain.tasks.find((t) => t.id === state.view.selectedTaskId) ?? null
       : null;
 
-  // Workspace class based on view mode
-  const workspaceClass =
-    state.view.mode === 'board'
-      ? 'workspace board-only'
-      : state.view.mode === 'timeline'
-        ? 'workspace timeline-only'
-        : 'workspace';
-
   return (
     <>
       <AppShell
@@ -96,8 +88,8 @@ export function App() {
         }}
         onOpenSettings={() => setShowSettings(true)}
       >
-        <main className={workspaceClass}>
-          {state.view.mode !== 'timeline' ? (
+        <main className="workspace single-pane">
+          {state.view.mode === 'board' ? (
             <Board
               state={state}
               onSelectTask={(taskId) =>
@@ -115,14 +107,13 @@ export function App() {
               }}
               onCollapseBoard={() => dispatch({ type: 'setViewMode', mode: 'timeline' })}
             />
-          ) : null}
-
-          {state.view.mode !== 'board' ? (
+          ) : (
             <Timeline
               state={state}
               onZoom={(value) => dispatch({ type: 'setZoom', value })}
               onGroupBy={(groupBy) => dispatch({ type: 'setGroupBy', groupBy })}
-              onRestoreBoard={() => dispatch({ type: 'setViewMode', mode: 'both' })}
+              onSetTaskListWidth={(value) => dispatch({ type: 'setTaskListWidth', value })}
+              onShowBoard={() => dispatch({ type: 'setViewMode', mode: 'board' })}
               onSelectTask={(taskId) =>
                 dispatch({ type: 'selectTask', taskId, openDrawer: true })
               }
@@ -145,6 +136,9 @@ export function App() {
               onRemoveDependency={(fromId, toId) =>
                 dispatch({ type: 'removeDependency', fromId, toId })
               }
+              onUpdateTask={(taskId, patch) =>
+                dispatch({ type: 'updateTask', taskId, patch })
+              }
               onRenameSwimlane={(key, label) =>
                 dispatch({ type: 'renameSwimlane', key, label })
               }
@@ -158,7 +152,7 @@ export function App() {
               onAddSwimlane={() => dispatch({ type: 'addSwimlane' })}
               showImpactStrip={!!state.pendingForecast && !state.view.drawerOpen}
             />
-          ) : null}
+          )}
         </main>
 
         {state.pendingForecast && !state.view.drawerOpen ? (

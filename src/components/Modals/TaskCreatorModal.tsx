@@ -97,6 +97,7 @@ export function TaskCreatorModal({ domain, parentPreset, onCancel, onCreate }: P
       isMilestone: false,
       locked: false,
       swimlane,
+      percentComplete: 0,
       parentId: parentId || null,
       isParent: false,
       dependencies: [],

@@ -48,6 +48,9 @@ export interface WorkItem {
   locked: boolean;
   swimlane: SwimlaneKey;
 
+  /** Percent complete, 0–100. Display-only; does not affect scheduling. */
+  percentComplete: number;
+
   /** If this task is a child, the ID of its parent. */
   parentId: string | null;
   /** True if this task has subtasks rolling into it. */
@@ -81,7 +84,7 @@ export interface WorkingCalendar {
   holidays: string[];
 }
 
-export type ViewMode = 'both' | 'board' | 'timeline';
+export type ViewMode = 'board' | 'timeline';
 export type GroupBy = 'swimlane' | 'parent' | 'status' | 'none';
 
 export interface AppDomainState {
@@ -105,6 +108,8 @@ export interface AppViewState {
   collapsedGroups: Record<string, boolean>;
   /** Currently-selected dep edge, if any. */
   selectedDep: { fromId: string; toId: string } | null;
+  /** Width in pixels of the task-list panel inside the Timeline view. */
+  taskListWidth: number;
 }
 
 export interface TaskMovement {

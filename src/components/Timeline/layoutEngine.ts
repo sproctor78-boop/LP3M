@@ -207,6 +207,7 @@ export function computeTimelineLayout(state: AppState): TimelineLayout {
           isMilestone: false,
           locked: false,
           swimlane: '',
+          percentComplete: 0,
           parentId: null,
           isParent: false,
           dependencies: [],

@@ -128,6 +128,44 @@ export function TaskInspector({
         </div>
       </div>
 
+      {!task.isMilestone ? (
+        <div className="detail-section">
+          <div className="detail-label">% Complete</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={task.percentComplete}
+              style={{ flex: 1 }}
+              onChange={(event) =>
+                onUpdateTask(task.id, {
+                  percentComplete: Math.max(0, Math.min(100, parseInt(event.target.value, 10))),
+                })
+              }
+              aria-label="Percent complete"
+            />
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={5}
+              value={task.percentComplete}
+              style={{ width: 70 }}
+              onChange={(event) => {
+                const next = parseInt(event.target.value, 10);
+                if (Number.isFinite(next)) {
+                  onUpdateTask(task.id, {
+                    percentComplete: Math.max(0, Math.min(100, next)),
+                  });
+                }
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
+
       <div className="detail-section">
         <div className="detail-label">Constraint</div>
         <select

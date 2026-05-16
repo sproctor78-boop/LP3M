@@ -14,9 +14,8 @@ interface Props {
 }
 
 const VIEW_MODES: { key: ViewMode; label: string }[] = [
-  { key: 'both', label: 'Both' },
-  { key: 'board', label: 'Board' },
   { key: 'timeline', label: 'Timeline' },
+  { key: 'board', label: 'Board' },
 ];
 
 export function AppShell({

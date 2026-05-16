@@ -20,6 +20,8 @@ import { MilestoneBar } from './MilestoneBar';
 import { DependencyLines } from './DependencyLines';
 import { DependencyPopover } from './DependencyPopover';
 import { DrawingState } from './useDepHandleDrag';
+import { Splitter } from './Splitter';
+import { TaskListPanel } from './TaskListPanel';
 import {
   computeTimelineLayout,
   computeTimelineWindow,
@@ -32,7 +34,8 @@ interface Props {
   state: AppState;
   onZoom: (value: number) => void;
   onGroupBy: (value: GroupBy) => void;
-  onRestoreBoard: () => void;
+  onSetTaskListWidth: (value: number) => void;
+  onShowBoard: () => void;
   onSelectTask: (taskId: string) => void;
   onToggleParent: (taskId: string) => void;
   onToggleGroupCollapse: (key: string) => void;
@@ -41,12 +44,12 @@ interface Props {
   onCreateDependency: (fromId: string, toId: string, depType: DependencyType) => void;
   onUpdateDependency: (fromId: string, toId: string, depType: DependencyType, lag: number) => void;
   onRemoveDependency: (fromId: string, toId: string) => void;
+  onUpdateTask: (taskId: string, patch: Partial<WorkItem>) => void;
   onRenameSwimlane: (key: string, label: string) => void;
   onDeleteSwimlane: (key: string) => void;
   onMoveTaskSwimlane: (taskId: string, swimlane: string) => void;
   onMoveTaskStatus: (taskId: string, status: string) => void;
   onAddSwimlane: () => void;
-  /** Forecast strip should appear; this prop tells App whether to render the strip below. */
   showImpactStrip: boolean;
 }
 
@@ -61,7 +64,8 @@ export function Timeline({
   state,
   onZoom,
   onGroupBy,
-  onRestoreBoard,
+  onSetTaskListWidth,
+  onShowBoard,
   onSelectTask,
   onToggleParent,
   onToggleGroupCollapse,
@@ -70,6 +74,7 @@ export function Timeline({
   onCreateDependency,
   onUpdateDependency,
   onRemoveDependency,
+  onUpdateTask,
   onRenameSwimlane,
   onDeleteSwimlane,
   onMoveTaskSwimlane,
@@ -77,7 +82,10 @@ export function Timeline({
   onAddSwimlane,
   showImpactStrip,
 }: Props) {
-  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const ganttScrollRef = useRef<HTMLDivElement | null>(null);
+  const taskListScrollRef = useRef<HTMLDivElement | null>(null);
+  const isSyncingScroll = useRef(false);
+
   const [drawing, setDrawing] = useState<DrawingState | null>(null);
   const [depPopover, setDepPopover] = useState<DepPopoverState | null>(null);
 
@@ -88,26 +96,47 @@ export function Timeline({
 
   const fc = state.pendingForecast;
   const proposedById = fc ? new Map(fc.proposedTasks.map((t) => [t.id, t])) : null;
-
-  // Drawn tasks: in preview, use proposedTasks for both ghosts and dep lines
   const drawnTasks = fc ? fc.proposedTasks : state.domain.tasks;
 
   const xOf = (iso: string) => diffDays(window_.start, iso) * dayWidth;
   const today = todayISO();
 
   const handleFit = () => {
-    if (!scrollRef.current) return;
-    const available = scrollRef.current.clientWidth - 24;
+    if (!ganttScrollRef.current) return;
+    const available = ganttScrollRef.current.clientWidth - 24;
     const next = Math.max(1.5, Math.min(60, available / window_.totalDays));
     onZoom(next);
   };
 
-  // Auto-close drawing line if it goes stale
+  // --- Vertical scroll sync between task list and gantt -----------------
   useEffect(() => {
-    if (drawing === null && document.body.classList.contains('drawing-dep')) {
-      document.body.classList.remove('drawing-dep');
-    }
-  }, [drawing]);
+    const taskListEl = taskListScrollRef.current;
+    const ganttEl = ganttScrollRef.current;
+    if (!taskListEl || !ganttEl) return;
+
+    const syncFromTaskList = () => {
+      if (isSyncingScroll.current) return;
+      isSyncingScroll.current = true;
+      ganttEl.scrollTop = taskListEl.scrollTop;
+      requestAnimationFrame(() => {
+        isSyncingScroll.current = false;
+      });
+    };
+    const syncFromGantt = () => {
+      if (isSyncingScroll.current) return;
+      isSyncingScroll.current = true;
+      taskListEl.scrollTop = ganttEl.scrollTop;
+      requestAnimationFrame(() => {
+        isSyncingScroll.current = false;
+      });
+    };
+    taskListEl.addEventListener('scroll', syncFromTaskList, { passive: true });
+    ganttEl.addEventListener('scroll', syncFromGantt, { passive: true });
+    return () => {
+      taskListEl.removeEventListener('scroll', syncFromTaskList);
+      ganttEl.removeEventListener('scroll', syncFromGantt);
+    };
+  }, []);
 
   // ESC closes the dep popover
   useEffect(() => {
@@ -151,10 +180,8 @@ export function Timeline({
       height,
     };
 
-    // Build the bar(s) for this row
     let barNode = null;
     if (isSummary) {
-      // Synthetic summary row uses a single bar at the merged span
       const left = xOf(task.startDate);
       const widthDays = Math.max(1, diffDays(task.startDate, task.endDate) + 1);
       barNode = (
@@ -186,7 +213,6 @@ export function Timeline({
         />
       );
     } else {
-      // Bar logic: if fc is pending, render ghost + proposed where applicable
       const proposed = proposedById?.get(task.id);
       const wasChanged = fc?.changedTaskId === task.id;
       const wasAffected = fc?.affectedTasks.some((a) => a.taskId === task.id);
@@ -224,8 +250,6 @@ export function Timeline({
           expanded={state.view.expandedParents[task.id] !== false}
           onPreviewDates={(start, end) => onPreviewTaskDates(task.id, start, end)}
           onCommitDates={(start, end, moved) => {
-            // The actual commit is handled by the App via Apply button on the impact strip;
-            // here we ensure the preview is set on release if it changed.
             if (moved) onPreviewTaskDates(task.id, start, end);
           }}
           onCancelDates={() => onCancelForecast()}
@@ -249,7 +273,6 @@ export function Timeline({
       );
     }
 
-    // Weekend + holiday overlays for the row
     const overlays = [];
     let cursor = window_.start;
     while (cursor <= window_.end) {
@@ -281,7 +304,6 @@ export function Timeline({
         style={rowStyle}
         data-task-id={task.id}
         onDragOver={(event) => {
-          // Allow row-level drop targets when in swimlane/status group mode
           if (state.view.groupBy === 'swimlane' || state.view.groupBy === 'status') {
             event.preventDefault();
             event.dataTransfer.dropEffect = 'move';
@@ -295,25 +317,23 @@ export function Timeline({
   };
 
   const gridContentHeight = layout.totalHeight;
-  const gridTotalHeight = gridContentHeight + TOTAL_HEADER_HEIGHT;
 
   return (
     <section className="timeline-panel">
       <div className="timeline-toolbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {state.view.mode === 'timeline' ? (
-            <button
-              type="button"
-              className="btn"
-              onClick={onRestoreBoard}
-              title="Show board"
-              aria-label="Show board"
-            >
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
-                <path d="M6 3 L11 8 L6 13" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          ) : null}
+          <button
+            type="button"
+            className="btn"
+            onClick={onShowBoard}
+            title="Switch to board view"
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <rect x="3" y="3" width="3.5" height="10" rx="0.5" />
+              <rect x="8" y="3" width="3.5" height="10" rx="0.5" />
+            </svg>
+            Board
+          </button>
           <div>
             <div className="timeline-title">Programme Timeline</div>
             <div className="timeline-meta">
@@ -358,97 +378,113 @@ export function Timeline({
         </div>
       </div>
 
-      <div className="timeline-scroll" ref={scrollRef}>
-        <div
-          className="timeline-grid"
-          style={{ width: totalWidth, height: gridTotalHeight, position: 'relative' }}
-        >
-          <TimelineHeader
-            window={window_}
-            dayWidth={dayWidth}
-            calendar={state.domain.workingCalendar}
-          />
+      <div className="timeline-body">
+        <TaskListPanel
+          ref={taskListScrollRef}
+          layout={layout}
+          width={state.view.taskListWidth}
+          selectedTaskId={state.view.selectedTaskId}
+          showCritical={state.view.showCritical}
+          onSelectTask={onSelectTask}
+          onToggleGroupCollapse={onToggleGroupCollapse}
+          onToggleParent={onToggleParent}
+          onUpdatePercent={(taskId, percent) =>
+            onUpdateTask(taskId, { percentComplete: percent })
+          }
+        />
+        <Splitter width={state.view.taskListWidth} onWidthChange={onSetTaskListWidth} />
+        <div className="gantt-area">
+          <div className="timeline-scroll" ref={ganttScrollRef}>
+            <div
+              className="timeline-grid"
+              style={{ width: totalWidth, height: gridContentHeight + TOTAL_HEADER_HEIGHT, position: 'relative' }}
+            >
+              <TimelineHeader
+                window={window_}
+                dayWidth={dayWidth}
+                calendar={state.domain.workingCalendar}
+              />
 
-          {/* All groups + rows; we render absolutely positioned starting after the headers. */}
-          <div
-            style={{
-              position: 'absolute',
-              top: TOTAL_HEADER_HEIGHT,
-              left: 0,
-              width: totalWidth,
-              height: gridContentHeight,
-            }}
-          >
-            {layout.groups.map((group) => (
-              <div key={group.key}>
-                <SwimlaneLabel
-                  groupKey={group.key}
-                  label={group.label}
-                  taskCount={group.taskCount}
-                  collapsed={group.collapsed}
-                  editable={state.view.groupBy === 'swimlane'}
-                  canDelete={state.domain.swimlanes.length > 1}
-                  y={group.labelY}
-                  onToggleCollapse={() => onToggleGroupCollapse(group.key)}
-                  onRename={(label) => onRenameSwimlane(group.key, label)}
-                  onDelete={() => onDeleteSwimlane(group.key)}
-                  onDropTask={(taskId) => {
-                    if (state.view.groupBy === 'swimlane') {
-                      onMoveTaskSwimlane(taskId, group.key);
-                      const lane = state.domain.swimlanes.find((s) => s.key === group.key);
-                      if (lane) showHint(`Moved task → ${lane.label}`);
-                    } else if (state.view.groupBy === 'status') {
-                      onMoveTaskStatus(taskId, group.key);
-                    }
-                  }}
-                />
-                {group.summaryRow
-                  ? renderRow(group.summaryRow.task!, group.summaryRow.y, group.summaryRow.height, true)
-                  : group.rows.map((row) =>
-                      renderRow(row.task!, row.y, row.height, false),
-                    )}
-              </div>
-            ))}
-
-            <DependencyLines
-              tasks={drawnTasks}
-              timelineStart={window_.start}
-              dayWidth={dayWidth}
-              totalWidth={totalWidth}
-              totalHeight={gridContentHeight}
-              showCritical={state.view.showCritical}
-              taskCentreY={layout.taskCentreY}
-              pendingForecast={fc}
-              selectedDep={state.view.selectedDep}
-              onSelectDep={(fromId, toId, x, y) => setDepPopover({ fromId, toId, x, y })}
-            />
-
-            {today >= window_.start && today <= window_.end ? (
               <div
-                className="today-line"
                 style={{
-                  left: xOf(today),
-                  top: 0,
+                  position: 'absolute',
+                  top: TOTAL_HEADER_HEIGHT,
+                  left: 0,
+                  width: totalWidth,
                   height: gridContentHeight,
                 }}
-              />
-            ) : null}
-          </div>
+              >
+                {layout.groups.map((group) => (
+                  <div key={group.key}>
+                    <SwimlaneLabel
+                      groupKey={group.key}
+                      label={group.label}
+                      taskCount={group.taskCount}
+                      collapsed={group.collapsed}
+                      editable={state.view.groupBy === 'swimlane'}
+                      canDelete={state.domain.swimlanes.length > 1}
+                      y={group.labelY}
+                      onToggleCollapse={() => onToggleGroupCollapse(group.key)}
+                      onRename={(label) => onRenameSwimlane(group.key, label)}
+                      onDelete={() => onDeleteSwimlane(group.key)}
+                      onDropTask={(taskId) => {
+                        if (state.view.groupBy === 'swimlane') {
+                          onMoveTaskSwimlane(taskId, group.key);
+                          const lane = state.domain.swimlanes.find((s) => s.key === group.key);
+                          if (lane) showHint(`Moved task → ${lane.label}`);
+                        } else if (state.view.groupBy === 'status') {
+                          onMoveTaskStatus(taskId, group.key);
+                        }
+                      }}
+                    />
+                    {group.summaryRow
+                      ? renderRow(group.summaryRow.task!, group.summaryRow.y, group.summaryRow.height, true)
+                      : group.rows.map((row) =>
+                          renderRow(row.task!, row.y, row.height, false),
+                        )}
+                  </div>
+                ))}
 
-          {state.view.groupBy === 'swimlane' ? (
-            <div style={{ position: 'absolute', left: 0, top: TOTAL_HEADER_HEIGHT + gridContentHeight }}>
-              <button type="button" className="swimlane-add" onClick={onAddSwimlane}>
-                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <path d="M6 2v8M2 6h8" strokeLinecap="round" />
-                </svg>
-                Add swimlane
-              </button>
+                <DependencyLines
+                  tasks={drawnTasks}
+                  timelineStart={window_.start}
+                  dayWidth={dayWidth}
+                  totalWidth={totalWidth}
+                  totalHeight={gridContentHeight}
+                  showCritical={state.view.showCritical}
+                  taskCentreY={layout.taskCentreY}
+                  pendingForecast={fc}
+                  selectedDep={state.view.selectedDep}
+                  onSelectDep={(fromId, toId, x, y) => setDepPopover({ fromId, toId, x, y })}
+                />
+
+                {today >= window_.start && today <= window_.end ? (
+                  <div
+                    className="today-line"
+                    style={{
+                      left: xOf(today),
+                      top: 0,
+                      height: gridContentHeight,
+                    }}
+                  />
+                ) : null}
+              </div>
+
+              {state.view.groupBy === 'swimlane' ? (
+                <div style={{ position: 'absolute', left: 0, top: TOTAL_HEADER_HEIGHT + gridContentHeight }}>
+                  <button type="button" className="swimlane-add" onClick={onAddSwimlane}>
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8">
+                      <path d="M6 2v8M2 6h8" strokeLinecap="round" />
+                    </svg>
+                    Add swimlane
+                  </button>
+                </div>
+              ) : null}
             </div>
-          ) : null}
+          </div>
         </div>
       </div>
 
-      {/* Drawing-line preview (fixed full-screen overlay) */}
       {drawing ? (
         <svg className={`drawing-line ${drawing.invalid ? 'invalid' : ''}`}>
           <path
@@ -461,7 +497,6 @@ export function Timeline({
         </svg>
       ) : null}
 
-      {/* Dep popover */}
       {depPopover
         ? (() => {
             const from = state.domain.tasks.find((t) => t.id === depPopover.fromId);
@@ -493,7 +528,6 @@ export function Timeline({
           })()
         : null}
 
-      {/* Visual: a transparent placeholder for the bottom (impact strip is rendered by App outside the panel for stacking) */}
       <div style={{ display: showImpactStrip ? 'block' : 'none' }} />
     </section>
   );

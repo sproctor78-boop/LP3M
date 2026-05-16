@@ -25,6 +25,7 @@ export type AppAction =
   | { type: 'setViewMode'; mode: ViewMode }
   | { type: 'setZoom'; value: number }
   | { type: 'setGroupBy'; groupBy: GroupBy }
+  | { type: 'setTaskListWidth'; value: number }
   | { type: 'toggleCritical' }
   | { type: 'toggleExpandedParent'; taskId: string }
   | { type: 'toggleGroupCollapsed'; key: string }
@@ -78,6 +79,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, view: { ...state.view, zoom: action.value } };
     case 'setGroupBy':
       return { ...state, view: { ...state.view, groupBy: action.groupBy } };
+    case 'setTaskListWidth':
+      return { ...state, view: { ...state.view, taskListWidth: action.value } };
     case 'toggleCritical':
       return { ...state, view: { ...state.view, showCritical: !state.view.showCritical } };
     case 'toggleExpandedParent': {

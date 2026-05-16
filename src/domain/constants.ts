@@ -30,3 +30,9 @@ export const ZOOM_PRESETS: { key: string; pxPerDay: number; label: string; title
   { key: 'M', pxPerDay: 5, label: 'M', title: 'Month view (5 px/day)' },
   { key: 'Q', pxPerDay: 2, label: 'Q', title: 'Quarter view (2 px/day)' },
 ];
+
+/** Task-list panel width clamps. */
+export const MIN_TASK_LIST_WIDTH = 240;
+export const DEFAULT_TASK_LIST_WIDTH = 380;
+/** The Gantt panel keeps at least this many pixels even at max splitter drag. */
+export const MIN_GANTT_AREA_WIDTH = 300;

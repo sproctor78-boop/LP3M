@@ -8,7 +8,7 @@
 
 import { AppState } from '../domain/types';
 import { createInitialDomainState } from '../domain/seedData';
-import { DEFAULT_ZOOM } from '../domain/constants';
+import { DEFAULT_TASK_LIST_WIDTH, DEFAULT_ZOOM } from '../domain/constants';
 
 const STORE_KEY = 'ripple_state_v3';
 const STORE_VERSION = 3;
@@ -27,7 +27,7 @@ export function createInitialAppState(): AppState {
   return {
     domain: createInitialDomainState(),
     view: {
-      mode: 'both',
+      mode: 'timeline',
       zoom: DEFAULT_ZOOM,
       groupBy: 'swimlane',
       showCritical: true,
@@ -36,6 +36,7 @@ export function createInitialAppState(): AppState {
       expandedParents: { T07: true },
       collapsedGroups: {},
       selectedDep: null,
+      taskListWidth: DEFAULT_TASK_LIST_WIDTH,
     },
     pendingForecast: null,
     pendingChange: null,
@@ -56,6 +57,35 @@ function isValidEnvelope(value: unknown): value is StoredEnvelope {
   );
 }
 
+/**
+ * Migrate a persisted view object to the current shape. Older versions used
+ * `mode: 'both'` (now removed) and did not have `taskListWidth`.
+ */
+function migrateView(view: AppState['view']): AppState['view'] {
+  const raw = view as unknown as Record<string, unknown>;
+  const rawMode = raw.mode;
+  const mode = rawMode === 'board' || rawMode === 'timeline' ? rawMode : 'timeline';
+  const taskListWidth =
+    typeof raw.taskListWidth === 'number' && raw.taskListWidth > 0
+      ? (raw.taskListWidth as number)
+      : DEFAULT_TASK_LIST_WIDTH;
+  return { ...view, mode, taskListWidth };
+}
+
+/**
+ * Migrate a persisted domain: ensure every task has a numeric percentComplete.
+ */
+function migrateDomain(domain: AppState['domain']): AppState['domain'] {
+  return {
+    ...domain,
+    tasks: domain.tasks.map((task) => ({
+      ...task,
+      percentComplete:
+        typeof task.percentComplete === 'number' ? task.percentComplete : 0,
+    })),
+  };
+}
+
 export function loadAppState(): AppState {
   try {
     const raw = localStorage.getItem(STORE_KEY);
@@ -63,8 +93,8 @@ export function loadAppState(): AppState {
     const parsed = JSON.parse(raw) as unknown;
     if (!isValidEnvelope(parsed)) return createInitialAppState();
     return {
-      domain: parsed.state.domain,
-      view: parsed.state.view,
+      domain: migrateDomain(parsed.state.domain),
+      view: migrateView(parsed.state.view),
       pendingForecast: null,
       pendingChange: null,
     };
