@@ -61,7 +61,9 @@ export type AppAction =
   // Calendar
   | { type: 'setWorkingCalendar'; highlightWeekends: boolean; holidays: string[] }
   // Scroll target
-  | { type: 'setScrollToTask'; taskId: string | null };
+  | { type: 'setScrollToTask'; taskId: string | null }
+  // Milestone filter
+  | { type: 'setMilestonesOnly'; value: boolean };
 
 function withRecomputedTasks(state: AppState, nextTasks: WorkItem[]): AppState {
   return {
@@ -342,6 +344,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case 'setScrollToTask':
       return { ...state, view: { ...state.view, scrollToTaskId: action.taskId } };
+    case 'setMilestonesOnly':
+      return { ...state, view: { ...state.view, milestonesOnly: action.value } };
 
     default: {
       // Exhaustiveness check

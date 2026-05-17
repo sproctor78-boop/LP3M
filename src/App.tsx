@@ -159,6 +159,7 @@ export function App() {
                 dispatch({ type: 'moveTaskStatus', taskId, status })
               }
               onAddSwimlane={() => dispatch({ type: 'addSwimlane' })}
+              onSetMilestonesOnly={(value) => dispatch({ type: 'setMilestonesOnly', value })}
               showImpactStrip={!!state.pendingForecast && !state.view.drawerOpen}
               onClearScrollToTask={() => dispatch({ type: 'setScrollToTask', taskId: null })}
             />

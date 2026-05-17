@@ -167,10 +167,20 @@ export function TaskInspector({
       ) : null}
 
       <div className="detail-section">
+        <label className="constraint-hard">
+          <input
+            type="checkbox"
+            checked={task.locked}
+            onChange={(event) => onUpdateTask(task.id, { locked: event.target.checked })}
+          />
+          <span>Locked — will not auto-move during forecast</span>
+        </label>
+      </div>
+
+      <div className="detail-section">
         <div className="detail-label">Constraint</div>
         <select
           value={constraintType}
-          disabled={task.locked}
           onChange={(event) => {
             const nextType = event.target.value as ConstraintFormType;
             const nextDate = task.constraint?.date ?? defaultDateFor(nextType);
@@ -189,7 +199,6 @@ export function TaskInspector({
             <input
               type="date"
               value={constraintDate}
-              disabled={task.locked}
               onChange={(event) => {
                 if (!event.target.value) return;
                 commitConstraint(constraintType, event.target.value, constraintHard);
@@ -202,7 +211,6 @@ export function TaskInspector({
             <input
               type="checkbox"
               checked={constraintHard}
-              disabled={task.locked}
               onChange={(event) => commitConstraint(constraintType, constraintDate, event.target.checked)}
             />
             <span>Hard — flag as breach when violated</span>
@@ -215,7 +223,7 @@ export function TaskInspector({
         )}
         {task.locked ? (
           <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--locked)' }}>
-            Locked — will not auto-move
+            Task is locked — dates will not shift during forecast propagation.
           </div>
         ) : null}
       </div>

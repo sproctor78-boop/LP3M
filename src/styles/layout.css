@@ -495,6 +495,31 @@
   margin: 0 4px;
 }
 
+.milestones-only-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--ink-muted);
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.milestones-only-chip:hover {
+  border-color: var(--border-strong);
+  color: var(--ink);
+}
+.milestones-only-chip.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .gantt-area {
   flex: 1;
   min-width: 0;
@@ -1812,6 +1837,15 @@ body.drawing-dep {
   flex: 0 0 5px;
   margin: 0 3px;
 }
+
+.task-list-marker-milestone {
+  flex: 0 0 10px;
+  margin: 0 2px;
+  fill: var(--accent);
+  overflow: visible;
+}
+.task-list-row.locked .task-list-marker-milestone { fill: var(--locked); }
+.task-list-row.breach .task-list-marker-milestone { fill: var(--breach); }
 
 .task-list-name {
   flex: 1;

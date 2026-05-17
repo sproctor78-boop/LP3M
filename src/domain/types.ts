@@ -112,6 +112,8 @@ export interface AppViewState {
   taskListWidth: number;
   /** When non-null, Timeline scrolls this task into view then clears the field. */
   scrollToTaskId: string | null;
+  /** When true, the timeline shows only milestone tasks. */
+  milestonesOnly: boolean;
 }
 
 export interface TaskMovement {

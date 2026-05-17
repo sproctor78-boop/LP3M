@@ -38,6 +38,7 @@ export function createInitialAppState(): AppState {
       selectedDep: null,
       taskListWidth: DEFAULT_TASK_LIST_WIDTH,
       scrollToTaskId: null,
+      milestonesOnly: false,
     },
     pendingForecast: null,
     pendingChange: null,
@@ -70,7 +71,8 @@ function migrateView(view: AppState['view']): AppState['view'] {
     typeof raw.taskListWidth === 'number' && raw.taskListWidth > 0
       ? (raw.taskListWidth as number)
       : DEFAULT_TASK_LIST_WIDTH;
-  return { ...view, mode, taskListWidth, scrollToTaskId: null };
+  const milestonesOnly = typeof raw.milestonesOnly === 'boolean' ? raw.milestonesOnly : false;
+  return { ...view, mode, taskListWidth, scrollToTaskId: null, milestonesOnly };
 }
 
 /**

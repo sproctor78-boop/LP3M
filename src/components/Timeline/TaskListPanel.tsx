@@ -8,6 +8,7 @@
 
 import React, { ForwardedRef, forwardRef, useState } from 'react';
 import { WorkItem } from '../../domain/types';
+import { formatShort } from '../../engine/dateUtils';
 import { LayoutGroup } from './layoutEngine';
 
 interface Props {
@@ -15,6 +16,7 @@ interface Props {
   width: number;
   selectedTaskId: string | null;
   showCritical: boolean;
+  milestonesOnly?: boolean;
   onSelectTask: (taskId: string) => void;
   onToggleGroupCollapse: (key: string) => void;
   onToggleParent: (taskId: string) => void;
@@ -29,6 +31,7 @@ export const TaskListPanel = forwardRef(function TaskListPanel(
     width,
     selectedTaskId,
     showCritical,
+    milestonesOnly = false,
     onSelectTask,
     onToggleGroupCollapse,
     onToggleParent,
@@ -63,7 +66,7 @@ export const TaskListPanel = forwardRef(function TaskListPanel(
                 </span>
                 <span className="task-list-group-label">{group.label}</span>
                 <span className="task-list-group-count">
-                  {group.taskCount} task{group.taskCount === 1 ? '' : 's'}
+                  {group.taskCount} {milestonesOnly ? 'milestone' : 'task'}{group.taskCount === 1 ? '' : 's'}
                 </span>
               </div>
 
@@ -177,6 +180,16 @@ function TaskListRow({
               <path d="M2 3.5 L5 6.5 L8 3.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
+        ) : task.isMilestone ? (
+          <svg
+            className="task-list-marker-milestone"
+            viewBox="0 0 10 10"
+            width="10"
+            height="10"
+            aria-hidden="true"
+          >
+            <path d="M5 0.5 L9.5 5 L5 9.5 L0.5 5 Z" />
+          </svg>
         ) : isSubtask ? (
           <span className="task-list-indent" aria-hidden="true" />
         ) : (
@@ -195,7 +208,7 @@ function TaskListRow({
       </div>
       <div className="tl-col tl-col-duration">
         <span className="task-list-duration">
-          {task.isMilestone ? '◆' : `${task.durationDays}d`}
+          {task.isMilestone ? formatShort(task.startDate) : `${task.durationDays}d`}
         </span>
       </div>
       <div className="tl-col tl-col-percent">

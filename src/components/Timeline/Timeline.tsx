@@ -50,6 +50,7 @@ interface Props {
   onMoveTaskSwimlane: (taskId: string, swimlane: string) => void;
   onMoveTaskStatus: (taskId: string, status: string) => void;
   onAddSwimlane: () => void;
+  onSetMilestonesOnly: (value: boolean) => void;
   showImpactStrip: boolean;
   onClearScrollToTask?: () => void;
 }
@@ -81,6 +82,7 @@ export function Timeline({
   onMoveTaskSwimlane,
   onMoveTaskStatus,
   onAddSwimlane,
+  onSetMilestonesOnly,
   showImpactStrip,
   onClearScrollToTask,
 }: Props) {
@@ -140,13 +142,17 @@ export function Timeline({
     };
   }, []);
 
-  // Scroll to a task when scrollToTaskId is set
+  // Scroll to a task when scrollToTaskId is set (fix 3: sync task list too)
   useEffect(() => {
     const taskId = state.view.scrollToTaskId;
     if (!taskId || !ganttScrollRef.current) return;
     const centreY = layout.taskCentreY.get(taskId);
     if (centreY != null) {
-      ganttScrollRef.current.scrollTop = Math.max(0, centreY - 100);
+      const scrollTop = Math.max(0, centreY - 80);
+      ganttScrollRef.current.scrollTop = scrollTop;
+      if (taskListScrollRef.current) {
+        taskListScrollRef.current.scrollTop = scrollTop;
+      }
     }
     onClearScrollToTask?.();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -388,6 +394,17 @@ export function Timeline({
               <option value="none">None</option>
             </select>
           </div>
+          <button
+            type="button"
+            className={`milestones-only-chip${state.view.milestonesOnly ? ' active' : ''}`}
+            onClick={() => onSetMilestonesOnly(!state.view.milestonesOnly)}
+            title={state.view.milestonesOnly ? 'Show all tasks' : 'Show milestones only'}
+          >
+            <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true">
+              <path d="M6 1 L11 6 L6 11 L1 6 Z" fill="currentColor" />
+            </svg>
+            Milestones only
+          </button>
           <ZoomControls zoom={state.view.zoom} onZoomChange={onZoom} onFit={handleFit} />
         </div>
       </div>
@@ -399,6 +416,7 @@ export function Timeline({
           width={state.view.taskListWidth}
           selectedTaskId={state.view.selectedTaskId}
           showCritical={state.view.showCritical}
+          milestonesOnly={state.view.milestonesOnly}
           onSelectTask={onSelectTask}
           onToggleGroupCollapse={onToggleGroupCollapse}
           onToggleParent={onToggleParent}
@@ -434,6 +452,7 @@ export function Timeline({
                       groupKey={group.key}
                       label={group.label}
                       taskCount={group.taskCount}
+                      itemLabel={state.view.milestonesOnly ? 'milestone' : 'task'}
                       collapsed={group.collapsed}
                       editable={state.view.groupBy === 'swimlane'}
                       canDelete={state.domain.swimlanes.length > 1}

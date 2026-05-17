@@ -156,6 +156,9 @@ export function computeTimelineLayout(state: AppState): TimelineLayout {
   const visibleTasks = baseTasks.filter((t) => {
     if (!t.parentId) return true;
     return expandedParents[t.parentId] !== false; // default expanded
+  }).filter((t) => {
+    if (!state.view.milestonesOnly) return true;
+    return t.isMilestone;
   });
 
   // Group
