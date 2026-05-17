@@ -6,9 +6,19 @@
 // with real planning data.
 // =============================================================================
 
-import { AppDomainState, WorkItem } from './types';
+import { AppDomainState, Person, WorkItem } from './types';
 import { recomputeSchedule } from '../engine/scheduleEngine';
 import { deepCopyTasks } from '../engine/dependencyEngine';
+
+export function seedPeople(): Person[] {
+  return [
+    { id: 'P01', displayName: 'Sarah Mitchell', email: 'sarah.mitchell@example.com', source: 'local' },
+    { id: 'P02', displayName: 'James Okafor', email: 'james.okafor@example.com', source: 'local' },
+    { id: 'P03', displayName: 'Rebecca Tan', email: 'rebecca.tan@example.com', source: 'local' },
+    { id: 'P04', displayName: 'David Chen', email: 'david.chen@example.com', source: 'local' },
+    { id: 'P05', displayName: 'Emma Walsh', email: 'emma.walsh@example.com', source: 'local' },
+  ];
+}
 
 function rawSeedTasks(): WorkItem[] {
   return [
@@ -25,6 +35,7 @@ function rawSeedTasks(): WorkItem[] {
       percentComplete: 100,
       parentId: null,
       isParent: false,
+      assignees: ['P01', 'P02'],
       dependencies: [],
       constraint: null,
     },
@@ -41,6 +52,7 @@ function rawSeedTasks(): WorkItem[] {
       percentComplete: 40,
       parentId: null,
       isParent: false,
+      assignees: ['P02'],
       dependencies: [{ taskId: 'T01', type: 'finish_to_start', lagDays: 0 }],
       constraint: null,
     },
@@ -57,6 +69,7 @@ function rawSeedTasks(): WorkItem[] {
       percentComplete: 0,
       parentId: null,
       isParent: false,
+      assignees: ['P03'],
       dependencies: [{ taskId: 'T02', type: 'finish_to_start', lagDays: 0 }],
       constraint: null,
     },
@@ -73,6 +86,7 @@ function rawSeedTasks(): WorkItem[] {
       percentComplete: 0,
       parentId: null,
       isParent: false,
+      assignees: ['P04'],
       dependencies: [{ taskId: 'T02', type: 'finish_to_start', lagDays: 0 }],
       constraint: null,
     },
@@ -89,6 +103,7 @@ function rawSeedTasks(): WorkItem[] {
       percentComplete: 0,
       parentId: null,
       isParent: false,
+      assignees: ['P03', 'P04'],
       dependencies: [{ taskId: 'T03', type: 'finish_to_start', lagDays: 0 }],
       constraint: null,
     },
@@ -105,6 +120,7 @@ function rawSeedTasks(): WorkItem[] {
       percentComplete: 0,
       parentId: null,
       isParent: false,
+      assignees: ['P04'],
       dependencies: [
         { taskId: 'T05', type: 'finish_to_start', lagDays: 0 },
         { taskId: 'T04', type: 'finish_to_start', lagDays: 0 },
@@ -124,6 +140,7 @@ function rawSeedTasks(): WorkItem[] {
       percentComplete: 0,
       parentId: null,
       isParent: true,
+      assignees: ['P05'],
       dependencies: [{ taskId: 'T06', type: 'finish_to_start', lagDays: 0 }],
       constraint: null,
     },
@@ -140,6 +157,7 @@ function rawSeedTasks(): WorkItem[] {
       percentComplete: 0,
       parentId: 'T07',
       isParent: false,
+      assignees: ['P02', 'P05'],
       dependencies: [],
       constraint: null,
     },
@@ -156,6 +174,7 @@ function rawSeedTasks(): WorkItem[] {
       percentComplete: 0,
       parentId: 'T07',
       isParent: false,
+      assignees: ['P05'],
       dependencies: [{ taskId: 'T07a', type: 'finish_to_start', lagDays: 0 }],
       constraint: null,
     },
@@ -172,6 +191,7 @@ function rawSeedTasks(): WorkItem[] {
       percentComplete: 0,
       parentId: 'T07',
       isParent: false,
+      assignees: ['P05'],
       dependencies: [{ taskId: 'T07b', type: 'finish_to_start', lagDays: 0 }],
       constraint: null,
     },
@@ -188,6 +208,7 @@ function rawSeedTasks(): WorkItem[] {
       percentComplete: 0,
       parentId: null,
       isParent: false,
+      assignees: ['P01', 'P05'],
       dependencies: [{ taskId: 'T07', type: 'finish_to_start', lagDays: 0 }],
       constraint: null,
     },
@@ -204,6 +225,7 @@ function rawSeedTasks(): WorkItem[] {
       percentComplete: 0,
       parentId: null,
       isParent: false,
+      assignees: ['P01'],
       dependencies: [{ taskId: 'T08', type: 'finish_to_start', lagDays: 0 }],
       constraint: null,
     },
@@ -220,6 +242,7 @@ function rawSeedTasks(): WorkItem[] {
       percentComplete: 0,
       parentId: null,
       isParent: false,
+      assignees: [],
       dependencies: [{ taskId: 'T09', type: 'finish_to_start', lagDays: 1 }],
       constraint: { type: 'must_finish_on', date: '2026-06-24', hard: true },
     },
@@ -250,5 +273,6 @@ export function createInitialDomainState(): AppDomainState {
       highlightWeekends: true,
       holidays: [],
     },
+    people: seedPeople(),
   };
 }

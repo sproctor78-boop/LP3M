@@ -1,4 +1,4 @@
-import { AppState, WorkItem } from '../../domain/types';
+import { AppState, Person, WorkItem } from '../../domain/types';
 import { TaskInspector } from './TaskInspector';
 import { ImpactPanel } from './ImpactPanel';
 
@@ -17,6 +17,9 @@ interface Props {
   onMoveTaskStatus: (taskId: string, status: string) => void;
   onMoveTaskSwimlane: (taskId: string, swimlane: string) => void;
   onAddSubtask: (parentTaskId: string) => void;
+  onAddAssignee: (taskId: string, personId: string) => void;
+  onRemoveAssignee: (taskId: string, personId: string) => void;
+  onCreatePerson: (person: Person) => void;
 }
 
 export function InspectorDrawer({
@@ -34,6 +37,9 @@ export function InspectorDrawer({
   onMoveTaskStatus,
   onMoveTaskSwimlane,
   onAddSubtask,
+  onAddAssignee,
+  onRemoveAssignee,
+  onCreatePerson,
 }: Props) {
   const fc = state.pendingForecast;
   let kicker = 'Inspector';
@@ -71,6 +77,9 @@ export function InspectorDrawer({
         onMoveTaskStatus={onMoveTaskStatus}
         onMoveTaskSwimlane={onMoveTaskSwimlane}
         onAddSubtask={onAddSubtask}
+        onAddAssignee={onAddAssignee}
+        onRemoveAssignee={onRemoveAssignee}
+        onCreatePerson={onCreatePerson}
       />
     );
   } else {

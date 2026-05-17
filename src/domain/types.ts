@@ -59,6 +59,9 @@ export interface WorkItem {
   /** Optional colour tag (CSS colour string), or null. */
   color?: string | null;
 
+  /** IDs of Person records assigned to this task. */
+  assignees: string[];
+
   dependencies: Dependency[];
   constraint: Constraint | null;
 
@@ -84,6 +87,26 @@ export interface WorkingCalendar {
   holidays: string[];
 }
 
+/**
+ * Represents a person who can be assigned to tasks.
+ * Designed to accommodate future Active Directory / Entra ID integration:
+ *   - `source: 'local'`  → created and managed within this app
+ *   - `source: 'ad'`     → synced from Azure AD / Entra ID; adObjectId & upn
+ *     are the stable identifiers used to match records during sync.
+ */
+export interface Person {
+  id: string;
+  displayName: string;
+  email?: string;
+  /** Azure AD / Entra ID object GUID — stable across renames. */
+  adObjectId?: string;
+  /** User Principal Name (e.g. jane@contoso.com) — used as AD login key. */
+  upn?: string;
+  source: 'local' | 'ad';
+  /** ISO timestamp of last successful AD sync for this record. */
+  adSyncedAt?: string;
+}
+
 export type ViewMode = 'board' | 'timeline';
 export type GroupBy = 'swimlane' | 'parent' | 'status' | 'none';
 
@@ -92,6 +115,7 @@ export interface AppDomainState {
   columns: BoardColumn[];
   swimlanes: Swimlane[];
   workingCalendar: WorkingCalendar;
+  people: Person[];
 }
 
 export interface AppViewState {

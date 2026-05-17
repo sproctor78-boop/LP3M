@@ -100,6 +100,7 @@ export function TaskCreatorModal({ domain, parentPreset, onCancel, onCreate }: P
       percentComplete: 0,
       parentId: parentId || null,
       isParent: false,
+      assignees: [],
       dependencies: [],
       constraint: null,
       color: color ?? null,

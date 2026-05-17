@@ -76,16 +76,24 @@ function migrateView(view: AppState['view']): AppState['view'] {
 }
 
 /**
- * Migrate a persisted domain: ensure every task has a numeric percentComplete.
+ * Migrate a persisted domain: fill any fields that may be absent in older
+ * stored versions (percentComplete, assignees, people).
  */
 function migrateDomain(domain: AppState['domain']): AppState['domain'] {
+  const raw = domain as unknown as Record<string, unknown>;
+  const people = Array.isArray(raw.people) ? raw.people : [];
   return {
     ...domain,
-    tasks: domain.tasks.map((task) => ({
-      ...task,
-      percentComplete:
-        typeof task.percentComplete === 'number' ? task.percentComplete : 0,
-    })),
+    people,
+    tasks: domain.tasks.map((task) => {
+      const t = task as unknown as Record<string, unknown>;
+      return {
+        ...task,
+        percentComplete:
+          typeof task.percentComplete === 'number' ? task.percentComplete : 0,
+        assignees: Array.isArray(t.assignees) ? (t.assignees as string[]) : [],
+      };
+    }),
   };
 }
 

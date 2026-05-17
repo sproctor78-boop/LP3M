@@ -213,6 +213,7 @@ export function computeTimelineLayout(state: AppState): TimelineLayout {
           percentComplete: 0,
           parentId: null,
           isParent: false,
+          assignees: [],
           dependencies: [],
           constraint: null,
         },

@@ -219,6 +219,30 @@ export function App() {
           setTaskModalParent(parentTaskId);
           setShowTaskModal(true);
         }}
+        onAddAssignee={(taskId, personId) =>
+          dispatch({
+            type: 'updateTask',
+            taskId,
+            patch: {
+              assignees: [
+                ...(state.domain.tasks.find((t) => t.id === taskId)?.assignees ?? []),
+                personId,
+              ],
+            },
+          })
+        }
+        onRemoveAssignee={(taskId, personId) =>
+          dispatch({
+            type: 'updateTask',
+            taskId,
+            patch: {
+              assignees: (state.domain.tasks.find((t) => t.id === taskId)?.assignees ?? []).filter(
+                (id) => id !== personId,
+              ),
+            },
+          })
+        }
+        onCreatePerson={(person) => dispatch({ type: 'addPerson', person })}
       />
 
       {showTaskModal ? (

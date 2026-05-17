@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
-import { AppState, ConstraintType, WorkItem } from '../../domain/types';
+import { AppState, ConstraintType, Person, WorkItem } from '../../domain/types';
 import { ColorSwatches } from './ColorSwatches';
+import { AssigneePicker } from './AssigneePicker';
 import { formatNice } from '../../engine/dateUtils';
 
 interface Props {
@@ -15,6 +16,9 @@ interface Props {
   onMoveTaskStatus: (taskId: string, status: string) => void;
   onMoveTaskSwimlane: (taskId: string, swimlane: string) => void;
   onAddSubtask: (parentTaskId: string) => void;
+  onAddAssignee: (taskId: string, personId: string) => void;
+  onRemoveAssignee: (taskId: string, personId: string) => void;
+  onCreatePerson: (person: Person) => void;
 }
 
 type ConstraintFormType = ConstraintType | 'flexible';
@@ -31,6 +35,9 @@ export function TaskInspector({
   onMoveTaskStatus,
   onMoveTaskSwimlane,
   onAddSubtask,
+  onAddAssignee,
+  onRemoveAssignee,
+  onCreatePerson,
 }: Props) {
   const predecessors = useMemo(
     () =>
@@ -273,6 +280,17 @@ export function TaskInspector({
         <ColorSwatches
           current={task.color ?? null}
           onPick={(value) => onUpdateTask(task.id, { color: value })}
+        />
+      </div>
+
+      <div className="detail-section">
+        <div className="detail-label">Assignees</div>
+        <AssigneePicker
+          assigneeIds={task.assignees}
+          people={state.domain.people}
+          onAdd={(personId) => onAddAssignee(task.id, personId)}
+          onRemove={(personId) => onRemoveAssignee(task.id, personId)}
+          onCreatePerson={(person) => onCreatePerson(person)}
         />
       </div>
 
