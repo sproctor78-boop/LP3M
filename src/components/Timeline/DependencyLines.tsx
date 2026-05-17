@@ -51,9 +51,20 @@ export function DependencyLines({
 
           const x1 = xOf(addDays(pred.endDate, 1));
           const x2 = xOf(task.startDate);
-          const midX = Math.max(x1 + 4, x2 - 10);
           const arrowX = x2 - 4;
-          const d = `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${arrowX} ${y2}`;
+
+          let d: string;
+          if (x2 <= x1) {
+            // Loop-back: successor starts before predecessor ends.
+            // Route through the inter-row gap so the line doesn't cross bars.
+            const STUB = 14;
+            // Mid-Y sits in the gap between bars (midpoint of adjacent bar edges).
+            const yMid = y1 === y2 ? y1 - 18 : (y1 + y2) / 2;
+            d = `M ${x1} ${y1} L ${x1 + STUB} ${y1} L ${x1 + STUB} ${yMid} L ${x2 - STUB} ${yMid} L ${x2 - STUB} ${y2} L ${arrowX} ${y2}`;
+          } else {
+            const midX = Math.max(x1 + 4, x2 - 10);
+            d = `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${arrowX} ${y2}`;
+          }
           const arrow = `M ${x2 - 5} ${y2 - 3} L ${x2} ${y2} L ${x2 - 5} ${y2 + 3} z`;
 
           const critical = !!(showCritical && pred.criticalPath && task.criticalPath);

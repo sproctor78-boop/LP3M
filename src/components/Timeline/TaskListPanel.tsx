@@ -6,7 +6,7 @@
 // summary rows mirror the Gantt structure for visual symmetry.
 // =============================================================================
 
-import { ForwardedRef, forwardRef, useState } from 'react';
+import React, { ForwardedRef, forwardRef, useState } from 'react';
 import { WorkItem } from '../../domain/types';
 import { LayoutGroup } from './layoutEngine';
 
@@ -234,7 +234,10 @@ function TaskListRow({
           >
             <span
               className="task-list-percent-fill"
-              style={{ width: `${task.percentComplete}%` }}
+              style={Object.assign(
+                { width: `${task.percentComplete}%` } as React.CSSProperties,
+                task.color ? { '--base': task.color } : {},
+              )}
               aria-hidden="true"
             />
             <span className="task-list-percent-text">{task.percentComplete}%</span>
