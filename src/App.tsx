@@ -159,6 +159,7 @@ export function App() {
                 dispatch({ type: 'moveTaskStatus', taskId, status })
               }
               onAddSwimlane={() => dispatch({ type: 'addSwimlane' })}
+              onSetMilestonesOnly={(value) => dispatch({ type: 'setMilestonesOnly', value })}
               showImpactStrip={!!state.pendingForecast && !state.view.drawerOpen}
               onClearScrollToTask={() => dispatch({ type: 'setScrollToTask', taskId: null })}
             />
@@ -218,6 +219,30 @@ export function App() {
           setTaskModalParent(parentTaskId);
           setShowTaskModal(true);
         }}
+        onAddAssignee={(taskId, personId) =>
+          dispatch({
+            type: 'updateTask',
+            taskId,
+            patch: {
+              assignees: [
+                ...(state.domain.tasks.find((t) => t.id === taskId)?.assignees ?? []),
+                personId,
+              ],
+            },
+          })
+        }
+        onRemoveAssignee={(taskId, personId) =>
+          dispatch({
+            type: 'updateTask',
+            taskId,
+            patch: {
+              assignees: (state.domain.tasks.find((t) => t.id === taskId)?.assignees ?? []).filter(
+                (id) => id !== personId,
+              ),
+            },
+          })
+        }
+        onCreatePerson={(person) => dispatch({ type: 'addPerson', person })}
       />
 
       {showTaskModal ? (

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
-import { AppState, ConstraintType, WorkItem } from '../../domain/types';
+import { AppState, ConstraintType, Person, WorkItem } from '../../domain/types';
 import { ColorSwatches } from './ColorSwatches';
+import { AssigneePicker } from './AssigneePicker';
 import { formatNice } from '../../engine/dateUtils';
 
 interface Props {
@@ -15,6 +16,9 @@ interface Props {
   onMoveTaskStatus: (taskId: string, status: string) => void;
   onMoveTaskSwimlane: (taskId: string, swimlane: string) => void;
   onAddSubtask: (parentTaskId: string) => void;
+  onAddAssignee: (taskId: string, personId: string) => void;
+  onRemoveAssignee: (taskId: string, personId: string) => void;
+  onCreatePerson: (person: Person) => void;
 }
 
 type ConstraintFormType = ConstraintType | 'flexible';
@@ -31,6 +35,9 @@ export function TaskInspector({
   onMoveTaskStatus,
   onMoveTaskSwimlane,
   onAddSubtask,
+  onAddAssignee,
+  onRemoveAssignee,
+  onCreatePerson,
 }: Props) {
   const predecessors = useMemo(
     () =>
@@ -167,10 +174,20 @@ export function TaskInspector({
       ) : null}
 
       <div className="detail-section">
+        <label className="constraint-hard">
+          <input
+            type="checkbox"
+            checked={task.locked}
+            onChange={(event) => onUpdateTask(task.id, { locked: event.target.checked })}
+          />
+          <span>Locked — will not auto-move during forecast</span>
+        </label>
+      </div>
+
+      <div className="detail-section">
         <div className="detail-label">Constraint</div>
         <select
           value={constraintType}
-          disabled={task.locked}
           onChange={(event) => {
             const nextType = event.target.value as ConstraintFormType;
             const nextDate = task.constraint?.date ?? defaultDateFor(nextType);
@@ -189,7 +206,6 @@ export function TaskInspector({
             <input
               type="date"
               value={constraintDate}
-              disabled={task.locked}
               onChange={(event) => {
                 if (!event.target.value) return;
                 commitConstraint(constraintType, event.target.value, constraintHard);
@@ -202,7 +218,6 @@ export function TaskInspector({
             <input
               type="checkbox"
               checked={constraintHard}
-              disabled={task.locked}
               onChange={(event) => commitConstraint(constraintType, constraintDate, event.target.checked)}
             />
             <span>Hard — flag as breach when violated</span>
@@ -215,7 +230,7 @@ export function TaskInspector({
         )}
         {task.locked ? (
           <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--locked)' }}>
-            Locked — will not auto-move
+            Task is locked — dates will not shift during forecast propagation.
           </div>
         ) : null}
       </div>
@@ -265,6 +280,17 @@ export function TaskInspector({
         <ColorSwatches
           current={task.color ?? null}
           onPick={(value) => onUpdateTask(task.id, { color: value })}
+        />
+      </div>
+
+      <div className="detail-section">
+        <div className="detail-label">Assignees</div>
+        <AssigneePicker
+          assigneeIds={task.assignees}
+          people={state.domain.people}
+          onAdd={(personId) => onAddAssignee(task.id, personId)}
+          onRemove={(personId) => onRemoveAssignee(task.id, personId)}
+          onCreatePerson={(person) => onCreatePerson(person)}
         />
       </div>
 

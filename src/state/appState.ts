@@ -9,6 +9,7 @@ import {
   AppState,
   DependencyType,
   GroupBy,
+  Person,
   ViewMode,
   WorkItem,
 } from '../domain/types';
@@ -61,7 +62,13 @@ export type AppAction =
   // Calendar
   | { type: 'setWorkingCalendar'; highlightWeekends: boolean; holidays: string[] }
   // Scroll target
-  | { type: 'setScrollToTask'; taskId: string | null };
+  | { type: 'setScrollToTask'; taskId: string | null }
+  // Milestone filter
+  | { type: 'setMilestonesOnly'; value: boolean }
+  // People management
+  | { type: 'addPerson'; person: Person }
+  | { type: 'updatePerson'; personId: string; patch: Partial<Person> }
+  | { type: 'removePerson'; personId: string };
 
 function withRecomputedTasks(state: AppState, nextTasks: WorkItem[]): AppState {
   return {
@@ -342,6 +349,27 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case 'setScrollToTask':
       return { ...state, view: { ...state.view, scrollToTaskId: action.taskId } };
+    case 'setMilestonesOnly':
+      return { ...state, view: { ...state.view, milestonesOnly: action.value } };
+
+    // ------- people management -------
+    case 'addPerson':
+      return { ...state, domain: { ...state.domain, people: [...state.domain.people, action.person] } };
+    case 'updatePerson': {
+      const people = state.domain.people.map((p) =>
+        p.id === action.personId ? { ...p, ...action.patch } : p,
+      );
+      return { ...state, domain: { ...state.domain, people } };
+    }
+    case 'removePerson': {
+      const people = state.domain.people.filter((p) => p.id !== action.personId);
+      // Remove the person from all task assignee lists.
+      const tasks = state.domain.tasks.map((t) => ({
+        ...t,
+        assignees: t.assignees.filter((id) => id !== action.personId),
+      }));
+      return { ...state, domain: { ...state.domain, people, tasks } };
+    }
 
     default: {
       // Exhaustiveness check

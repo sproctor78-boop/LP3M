@@ -5,6 +5,8 @@ interface Props {
   groupKey: string;
   label: string;
   taskCount: number;
+  /** Singular label for one item in the count, defaults to 'task'. */
+  itemLabel?: string;
   collapsed: boolean;
   /** True if rename/delete affordances should be available (swimlane mode only). */
   editable: boolean;
@@ -20,6 +22,7 @@ export function SwimlaneLabel({
   groupKey,
   label,
   taskCount,
+  itemLabel = 'task',
   collapsed,
   editable,
   canDelete,
@@ -113,7 +116,7 @@ export function SwimlaneLabel({
       )}
 
       <span className="swimlane-count">
-        {taskCount} task{taskCount === 1 ? '' : 's'}
+        {taskCount} {itemLabel}{taskCount === 1 ? '' : 's'}
       </span>
 
       {editable && canDelete ? (
