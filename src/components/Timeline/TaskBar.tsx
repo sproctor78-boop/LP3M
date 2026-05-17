@@ -90,13 +90,14 @@ export function TaskBar({
   else if (task.locked) classes.push('locked');
   else if (task.criticalPath && showCritical) classes.push('critical');
   if (selected && !ghost) classes.push('selected');
-  if (task.color && !ghost && !task.isParent) classes.push('colored');
 
   const style: CSSProperties = {
     left,
     width: widthPx,
   };
-  if (task.color) (style as Record<string, string | number>)['--task-color'] = task.color;
+  const styleVars = style as Record<string, string | number>;
+  if (task.color) styleVars['--task-color'] = task.color;
+  styleVars['--pct'] = `${progressPct}%`;
 
   return (
     <div
@@ -164,15 +165,6 @@ export function TaskBar({
             title="Drag to create finish-to-start dependency"
           />
         </>
-      ) : null}
-      {!ghost && progressPct > 0 ? (
-        <div
-          className="task-bar-progress"
-          style={{
-            background: `linear-gradient(to right, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.18) ${progressPct}%, transparent ${progressPct}%, transparent 100%)`,
-          }}
-          aria-hidden="true"
-        />
       ) : null}
     </div>
   );

@@ -732,13 +732,24 @@
 }
 
 .task-bar {
+  --base: var(--task-color, var(--ink-2));
+  --fill: color-mix(in srgb, var(--base) 75%, #000);
+  --track: color-mix(in srgb, var(--base) 20%, #fff);
+
   position: absolute;
   top: 8px;
   height: 28px;
   border-radius: 7px;
-  border: 1px solid var(--ink-2);
-  background: var(--ink-2);
-  color: white;
+  border: 1px solid var(--fill);
+  background: linear-gradient(
+    to right,
+    var(--fill) 0%,
+    var(--fill) var(--pct, 0%),
+    var(--track) var(--pct, 0%),
+    var(--track) 100%
+  );
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
   display: flex;
   align-items: center;
   padding: 0 10px;
@@ -761,57 +772,37 @@
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
-.task-bar.critical {
-  background: var(--critical);
-  border-color: var(--critical);
-}
+.task-bar.critical { --base: var(--task-color, var(--critical)); }
 .task-bar.forecast {
   background: var(--forecast-soft);
   border-color: var(--forecast-border);
   border-style: dashed;
   color: var(--ink);
+  text-shadow: none;
 }
-.task-bar.directly-changed {
-  background: var(--forecast);
-  border-color: var(--forecast-border);
-  color: white;
-}
+.task-bar.directly-changed { --base: var(--task-color, var(--forecast)); }
 .task-bar.ghost {
   background: transparent;
   border: 1px dashed var(--ink-faint);
   color: var(--ink-faint);
+  text-shadow: none;
   cursor: default;
   pointer-events: none;
   box-shadow: none;
 }
-.task-bar.breach {
-  background: var(--breach);
-  border-color: var(--breach-border);
-  color: white;
-}
-.task-bar.locked {
-  background: var(--locked);
-  color: white;
-  border-color: var(--locked);
-}
+.task-bar.breach { --base: var(--task-color, var(--breach)); }
+.task-bar.locked { --base: var(--task-color, var(--locked)); }
 .task-bar.parent {
   height: 22px;
   top: 11px;
   background: var(--ink);
   border-color: var(--ink);
-  border-radius: 4px 4px 4px 4px;
+  border-radius: 4px;
 }
 .task-bar.subtask {
+  --base: var(--task-color, var(--accent));
   height: 22px;
   top: 6px;
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  color: var(--accent);
-}
-.task-bar.colored:not(.ghost):not(.parent) {
-  background: var(--task-color, var(--accent));
-  border-color: var(--task-color, var(--accent));
-  color: white;
 }
 .task-bar-title {
   white-space: nowrap;
@@ -1862,11 +1853,12 @@ body.drawing-dep {
   border-color: var(--border-strong);
 }
 .task-list-percent-fill {
+  --base: var(--accent);
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, var(--accent-soft), #c8d4ea);
+  background: color-mix(in srgb, var(--base) 20%, #fff);
   pointer-events: none;
-  border-right: 1px solid var(--accent);
+  border-right: 1px solid color-mix(in srgb, var(--base) 75%, #000);
 }
 .task-list-percent-text {
   position: relative;
@@ -1938,18 +1930,3 @@ body.splitter-dragging * {
   cursor: col-resize !important;
 }
 
-/* ==========================================================================
-   Progress overlay on bars — subtle inset stripe at the bottom of the bar
-   ========================================================================== */
-
-.task-bar-progress {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-}
-.task-bar.parent .task-bar-progress,
-.task-bar.locked .task-bar-progress,
-.task-bar.breach .task-bar-progress {
-  display: none;
-}
