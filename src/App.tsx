@@ -200,6 +200,10 @@ export function App() {
               }
               onAddSwimlane={() => dispatch({ type: 'addSwimlane' })}
               onSetMilestonesOnly={(value) => dispatch({ type: 'setMilestonesOnly', value })}
+              onSetRaidActionsVisible={(value) => dispatch({ type: 'setRaidActionsVisible', value })}
+              onSelectAction={(actionId) =>
+                dispatch({ type: 'selectRaidAction', actionId, openDrawer: true })
+              }
               showImpactStrip={!!state.pendingForecast && !state.view.drawerOpen}
               onClearScrollToTask={() => dispatch({ type: 'setScrollToTask', taskId: null })}
             />

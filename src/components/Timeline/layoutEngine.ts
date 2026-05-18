@@ -85,6 +85,13 @@ export function computeTimelineWindow(state: AppState): TimelineWindow {
       if (t.endDate > maxDate) maxDate = t.endDate;
     });
   }
+  // Include RAID action due dates when overlay is visible
+  if (state.view.raidActionsVisibleInTimeline) {
+    state.domain.raidActions.forEach((a) => {
+      if (a.dueDate < minDate) minDate = a.dueDate;
+      if (a.dueDate > maxDate) maxDate = a.dueDate;
+    });
+  }
 
   // Fall back to today if no tasks
   if (minDate === '9999-12-31') {

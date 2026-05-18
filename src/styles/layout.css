@@ -2502,3 +2502,94 @@ body.splitter-dragging * {
   display: block;
 }
 
+/* ---- RAID Actions Timeline Overlay ------------------------------------ */
+.raid-overlay-band {
+  position: relative;
+  background: var(--forecast-soft);
+  border-top: 2px solid var(--forecast-border);
+  border-radius: 0 0 4px 4px;
+  overflow: visible;
+}
+
+.raid-overlay-band::before {
+  content: 'RAID Actions';
+  position: absolute;
+  left: 6px;
+  bottom: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--forecast);
+  opacity: 0.6;
+  pointer-events: none;
+  user-select: none;
+}
+
+.raid-flag {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translateX(-50%);
+  cursor: pointer;
+  z-index: var(--z-overlay, 10);
+  transition: opacity 0.1s;
+}
+
+.raid-flag:hover {
+  z-index: var(--z-popover, 20);
+}
+
+.raid-flag:hover .raid-flag-label {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.raid-flag-label {
+  background: var(--forecast);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  transition: transform 0.1s, opacity 0.1s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.raid-flag-stem {
+  width: 1px;
+  background: var(--forecast-border);
+  flex-shrink: 0;
+}
+
+/* Status colour variants */
+.raid-flag.overdue .raid-flag-label {
+  background: var(--breach);
+}
+.raid-flag.overdue .raid-flag-stem {
+  background: var(--breach-border);
+}
+
+.raid-flag.done .raid-flag-label {
+  background: #15803d;
+}
+.raid-flag.done .raid-flag-stem {
+  background: #86efac;
+}
+
+.raid-flag.inprogress .raid-flag-label {
+  background: var(--accent);
+}
+.raid-flag.inprogress .raid-flag-stem {
+  background: var(--accent-border);
+}
+
+/* Selected state */
+.raid-flag.selected .raid-flag-label {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
