@@ -8,6 +8,7 @@ import { detectConstraintIssues } from './engine/constraintEngine';
 import { AppShell } from './components/AppShell/AppShell';
 import { Board } from './components/Board/Board';
 import { Timeline } from './components/Timeline/Timeline';
+import { RiskRegister } from './components/RiskRegister/RiskRegister';
 import { InspectorDrawer } from './components/InspectorDrawer/InspectorDrawer';
 import { ImpactStrip } from './components/ImpactStrip/ImpactStrip';
 import { Legend } from './components/Legend/Legend';
@@ -88,6 +89,11 @@ export function App() {
       ? state.domain.tasks.find((t) => t.id === state.view.selectedTaskId) ?? null
       : null;
 
+  const selectedRisk =
+    state.view.selectedRiskId
+      ? state.domain.risks.find((r) => r.id === state.view.selectedRiskId) ?? null
+      : null;
+
   return (
     <>
       <AppShell
@@ -116,6 +122,18 @@ export function App() {
               }}
               onCollapseBoard={() => dispatch({ type: 'setViewMode', mode: 'timeline' })}
             />
+          ) : state.view.mode === 'riskRegister' ? (
+            <RiskRegister
+              state={state}
+              onSelectRisk={(riskId) =>
+                dispatch({ type: 'selectRisk', riskId, openDrawer: true })
+              }
+            />
+          ) : state.view.mode === 'raidBoard' ? (
+            // Phase 3: RAID Actions Board
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--ink-faint)', fontStyle: 'italic' }}>
+              RAID Actions Board — coming in Phase 3
+            </div>
           ) : (
             <Timeline
               state={state}
@@ -184,7 +202,21 @@ export function App() {
       <InspectorDrawer
         state={state}
         selectedTask={selectedTask}
+        selectedRisk={selectedRisk}
         onClose={() => dispatch({ type: 'closeDrawer' })}
+        onUpdateRisk={(riskId, patch) => dispatch({ type: 'updateRisk', riskId, patch })}
+        onDeleteRisk={(riskId) => {
+          dispatch({ type: 'deleteRisk', riskId });
+          showHint('Risk deleted');
+        }}
+        onApproveResidualScore={(riskId, newResidual) => {
+          dispatch({ type: 'approveResidualScore', riskId, newResidual });
+          showHint('Residual score approved');
+        }}
+        onRejectResidualScore={(riskId) => {
+          dispatch({ type: 'rejectResidualScore', riskId });
+          showHint('Score update rejected');
+        }}
         onApplyForecast={() => {
           dispatch({ type: 'applyForecast' });
           dispatch({ type: 'closeDrawer' });

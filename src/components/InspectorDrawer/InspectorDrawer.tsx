@@ -1,10 +1,12 @@
-import { AppState, Person, WorkItem } from '../../domain/types';
+import { AppState, Person, Risk, RiskScore, WorkItem } from '../../domain/types';
 import { TaskInspector } from './TaskInspector';
 import { ImpactPanel } from './ImpactPanel';
+import { RiskInspector } from '../RiskRegister/RiskInspector';
 
 interface Props {
   state: AppState;
   selectedTask: WorkItem | null;
+  selectedRisk: Risk | null;
   onClose: () => void;
   onApplyForecast: () => void;
   onCancelForecast: () => void;
@@ -20,11 +22,16 @@ interface Props {
   onAddAssignee: (taskId: string, personId: string) => void;
   onRemoveAssignee: (taskId: string, personId: string) => void;
   onCreatePerson: (person: Person) => void;
+  onUpdateRisk: (riskId: string, patch: Partial<Risk>) => void;
+  onDeleteRisk: (riskId: string) => void;
+  onApproveResidualScore: (riskId: string, newResidual: RiskScore) => void;
+  onRejectResidualScore: (riskId: string) => void;
 }
 
 export function InspectorDrawer({
   state,
   selectedTask,
+  selectedRisk,
   onClose,
   onApplyForecast,
   onCancelForecast,
@@ -40,10 +47,14 @@ export function InspectorDrawer({
   onAddAssignee,
   onRemoveAssignee,
   onCreatePerson,
+  onUpdateRisk,
+  onDeleteRisk,
+  onApproveResidualScore,
+  onRejectResidualScore,
 }: Props) {
   const fc = state.pendingForecast;
   let kicker = 'Inspector';
-  let title = 'Select a task';
+  let title = 'Select an item';
 
   if (fc) {
     kicker = 'Schedule impact';
@@ -51,6 +62,9 @@ export function InspectorDrawer({
   } else if (selectedTask) {
     kicker = 'Task Detail';
     title = selectedTask.title;
+  } else if (selectedRisk) {
+    kicker = selectedRisk.status === 'PendingApproval' ? 'Risk · Pending Approval' : 'Risk Detail';
+    title = selectedRisk.title;
   }
 
   let body: JSX.Element;
@@ -80,6 +94,17 @@ export function InspectorDrawer({
         onAddAssignee={onAddAssignee}
         onRemoveAssignee={onRemoveAssignee}
         onCreatePerson={onCreatePerson}
+      />
+    );
+  } else if (selectedRisk) {
+    body = (
+      <RiskInspector
+        risk={selectedRisk}
+        raidActions={state.domain.raidActions.filter((a) => a.riskId === selectedRisk.id)}
+        onUpdateRisk={onUpdateRisk}
+        onDeleteRisk={onDeleteRisk}
+        onApproveResidualScore={onApproveResidualScore}
+        onRejectResidualScore={onRejectResidualScore}
       />
     );
   } else {

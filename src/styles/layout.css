@@ -2095,3 +2095,319 @@ body.splitter-dragging * {
   filter: brightness(1.08);
 }
 
+/* ==========================================================================
+   Risk Register
+   ========================================================================== */
+
+.risk-register-panel {
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  height: 100%;
+}
+
+.risk-register-toolbar {
+  min-height: 58px;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.risk-register-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1;
+  justify-content: center;
+}
+
+.risk-register-search {
+  width: 200px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12.5px;
+}
+.risk-register-search:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  width: 240px;
+  transition: width 0.15s ease;
+}
+
+.risk-register-filter-select {
+  width: auto;
+  padding: 6px 10px;
+  font-size: 12.5px;
+}
+
+/* ---- Risk grid ---- */
+.risk-grid-wrap {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+
+.risk-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: auto;
+}
+
+.risk-grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background: var(--surface-2);
+  border-bottom: 2px solid var(--border-strong);
+  padding: 9px 14px;
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-muted);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.risk-grid thead th:hover {
+  color: var(--ink);
+  background: var(--surface-3);
+}
+.risk-grid-sort-icon {
+  color: var(--accent);
+}
+
+.risk-grid tbody tr {
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.risk-grid tbody tr:hover {
+  background: var(--surface-2);
+}
+.risk-grid tbody tr.selected {
+  background: var(--accent-soft);
+  outline: none;
+}
+.risk-grid tbody tr.selected:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.risk-grid tbody tr:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.risk-grid tbody tr.pending-approval {
+  border-left: 3px solid var(--forecast-border);
+}
+.risk-grid tbody tr.pending-approval:not(.selected) {
+  background: var(--forecast-soft);
+}
+
+.risk-grid td {
+  padding: 10px 14px;
+  vertical-align: middle;
+}
+
+.risk-grid-id {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.risk-grid-title {
+  font-weight: 500;
+  max-width: 320px;
+}
+
+.risk-grid-category {
+  font-size: 11.5px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.risk-grid-empty {
+  text-align: center;
+  padding: 40px;
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+/* ---- Score badge ---- */
+.risk-score-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.risk-score-badge--green {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #86efac;
+}
+.risk-score-badge--amber {
+  background: var(--risk-soft);
+  color: var(--risk);
+  border-color: var(--forecast-border);
+}
+.risk-score-badge--red {
+  background: var(--breach-soft);
+  color: var(--breach);
+  border-color: var(--breach-border);
+}
+
+/* ---- Status badges for risks ---- */
+.badge.risk-open {
+  background: var(--surface-3);
+  color: var(--ink-2);
+  border-color: var(--border-strong);
+}
+.badge.risk-mitigated {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #86efac;
+}
+.badge.risk-closed {
+  background: var(--locked-soft);
+  color: var(--locked);
+  border-color: var(--locked-soft);
+}
+.badge.risk-pending {
+  background: var(--forecast-soft);
+  color: var(--forecast);
+  border-color: var(--forecast-border);
+}
+
+/* ---- Risk inspector (inside drawer) ---- */
+.risk-approval-panel {
+  background: var(--forecast-soft);
+  border-bottom: 2px solid var(--forecast-border);
+  padding: 16px 20px;
+}
+.risk-approval-panel-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--forecast);
+  margin-bottom: 4px;
+}
+.risk-approval-panel-desc {
+  font-size: 12px;
+  color: var(--ink-2);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+.risk-approval-reference {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+.risk-approval-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.risk-score-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.risk-score-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  background: var(--surface-2);
+}
+.risk-score-card-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+  margin-bottom: 6px;
+}
+.risk-score-card-detail {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+  margin-top: 4px;
+}
+.risk-score-card-pct {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+  margin-top: 2px;
+}
+
+.risk-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+.risk-action-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+.risk-action-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+.risk-action-due {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+/* Action status badge colours */
+.badge.risk-action-status--todo {
+  background: var(--surface-3);
+  color: var(--ink-muted);
+}
+.badge.risk-action-status--inprogress {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+.badge.risk-action-status--done {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #86efac;
+}
+.badge.risk-action-status--overdue {
+  background: var(--breach-soft);
+  color: var(--breach);
+  border-color: var(--breach-border);
+}
+
