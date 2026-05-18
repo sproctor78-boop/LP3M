@@ -44,6 +44,12 @@ ripple/
     ├── App.tsx              # Root composition (reducer + modal state)
     ├── styles/              # CSS tokens, global, layout
     ├── domain/              # Types, constants, seed data
+    │   ├── types.ts         # All shared domain types + re-exports
+    │   ├── risk.ts          # Risk / RiskScore / ResponseItem types
+    │   ├── raidAction.ts    # RaidAction / ActionStatus types
+    │   ├── raidScoring.ts   # Pure scoring functions (probabilityToBand, buildRiskScore …)
+    │   ├── seedData.ts      # Programme task + people seed data
+    │   └── raidSeedData.ts  # 12 risks + 19 actions seed data
     ├── engine/              # Pure scheduling engine
     │   ├── dateUtils.ts
     │   ├── calendarEngine.ts
@@ -53,18 +59,30 @@ ripple/
     │   ├── forecastEngine.ts
     │   └── impactEngine.ts
     ├── state/               # Reducer + localStorage adapter
+    ├── export/              # JSON export + RAID CSV export
     ├── components/
-    │   ├── AppShell/        # Header, view switch
-    │   ├── Board/           # Kanban board
-    │   ├── Timeline/        # Timeline + drag hooks + dep lines
-    │   ├── InspectorDrawer/ # Right rail (task inspector + impact panel)
+    │   ├── AppShell/        # Header, 4-item view switch
+    │   ├── Board/           # Kanban board (project tasks + RAID actions)
+    │   │   ├── Board.tsx           # source prop selects project / RAID mode
+    │   │   ├── BoardColumn.tsx     # render-prop column (task or custom card)
+    │   │   ├── BoardCard.tsx       # project task card
+    │   │   ├── RaidActionCard.tsx  # RAID action card
+    │   │   └── boardHelpers.ts     # pure tasksForColumn / actionsForColumn
+    │   ├── Timeline/        # Timeline + drag hooks + dep lines + RAID overlay
+    │   │   └── RaidActionsOverlay.tsx  # amber flag-marker band
+    │   ├── RiskRegister/    # Risk register table + inspector
+    │   │   ├── RiskRegister.tsx    # toolbar, filters, export
+    │   │   ├── RiskGrid.tsx        # sortable table
+    │   │   ├── RiskScoreBadge.tsx  # RAG score chip
+    │   │   └── RiskInspector.tsx   # detail panel + approval form
+    │   ├── InspectorDrawer/ # Right rail (task / risk / action / forecast)
+    │   │   └── RaidActionInspector.tsx  # action detail + mark-complete
     │   ├── ImpactStrip/     # Forecast summary above the timeline
     │   ├── Modals/          # Task creator, settings
     │   ├── Legend/
     │   ├── StatusPill/
     │   └── Toasts/          # Hint
-    ├── export/              # JSON export (Ripple Export v1)
-    └── tests/               # Vitest unit tests
+    └── tests/               # Vitest unit tests (87 tests across 7 files)
 ```
 
 ### Architecture in one paragraph
@@ -75,9 +93,48 @@ localStorage. The reducer in `src/state/appState.ts` is the single point at
 which a user action becomes a new state — it composes engine functions and
 returns a new `AppState`. React components only read state and dispatch
 actions; they never call engine functions directly. The persistence adapter
-serialises state to localStorage with a version key (`ripple_state_v3`); the
+serialises state to localStorage with a version key (`ripple_state_v5`); the
 pending forecast is intentionally excluded so a refresh always lands on a
 committed state.
+
+### RAID scoring
+
+Risk scores use a `probabilityBand × max(costImpact, timeImpact)` formula
+(range 1–25). Bands follow MOD / HM Treasury Orange Book symmetric quintiles.
+RAG: Green 1–5 · Amber 6–12 · Red ≥ 13. All scoring logic is in
+`src/domain/raidScoring.ts` — pure functions with no side effects, tested
+independently of the UI.
+
+### Board parameterisation
+
+`BoardColumn` accepts an optional `renderCard` render-prop. When provided it
+renders `ownItems` flat using the custom renderer, bypassing all task-specific
+logic. The project-tasks Board and the RAID Actions Board share all column
+drag-and-drop mechanics through this seam — the RAID Board path passes
+`RaidActionCard` as the renderer and `RAID_BOARD_COLUMNS` as the fixed column
+set. The existing project board is entirely unmodified.
+
+### PendingApproval governance flow
+
+1. A `RaidAction` is marked Done with an effectiveness rating (1–5).
+2. The parent `Risk.status` moves to `PendingApproval`.
+3. An approver opens the risk in the inspector, manually enters a new residual
+   probability %, cost impact, and time impact.
+4. Approve → updates `risk.scores.residual`; status becomes Mitigated if the
+   new residual score ≤ target score, otherwise Open.
+5. Reject → clears `proposedResidualScore`; status reverts to Open.
+
+There is no auto-calculation formula. The approver is the governance actor.
+
+### Future engine integration seam
+
+`src/engine/` is intentionally unchanged in this pass. When the engine is
+extended to model schedule risk (Monte Carlo date ranges, risk-adjusted float),
+the seam is `raidScoring.ts` → schedule engine: supply risk score and
+probability to a simulation pass that widens float bands on critical-path tasks
+linked to open/red risks. The data model supports this: `Risk` records carry
+all three score tiers (inherent / residual / target) and `RaidAction` records
+carry `dueDate` and `completionEffectiveness` for weighting.
 
 ### Overlay (z-index) scale
 
@@ -139,14 +196,18 @@ Netlify will pick the next push up automatically once connected.
 
 ## What's here in this version
 
-The interface offers two top-level views, switchable from the header:
+The interface has four top-level views, switchable from the header:
 
-- **Timeline.** An MS-Project-style layout: a task list on the left (Task name,
-  Duration, % Complete) and the Gantt chart on the right. A draggable splitter
-  between them lets you adjust the ratio; the panes share a vertical scroll so
-  every list row lines up with its bar.
-- **Board.** A kanban-style view with editable columns, useful for status
-  triage independent of dates.
+- **Timeline.** MS-Project-style Gantt with a task list + splitter. Drag any
+  bar to forecast schedule impact. Toggle "RAID actions" to overlay amber flag
+  markers at each action's due date.
+- **Board.** Kanban view of project tasks with editable columns.
+- **Risk Register.** Sortable/filterable table of programme risks with
+  inherent / residual / target RAG scores, CSV export, and a
+  "Needs approval" filter for the PendingApproval workflow.
+- **RAID Actions Board.** Fixed four-column kanban (To Do · In Progress ·
+  Done · Overdue) showing all RAID actions. Drag to change status; click to
+  open the action inspector and mark complete.
 
 | Feature                                  | Status   |
 | ---------------------------------------- | -------- |
@@ -173,8 +234,14 @@ The interface offers two top-level views, switchable from the header:
 | Today line                               | ✅       |
 | Hint toasts                              | ✅       |
 | Escape / click-outside handling          | ✅       |
-| **MS-Project-style task list + splitter** | ✅       |
-| **% complete (editable, with bar overlay)** | ✅       |
+| MS-Project-style task list + splitter    | ✅       |
+| % complete (editable, with bar overlay)  | ✅       |
+| **Risk Register** (12 seed risks, sortable, filterable, CSV export) | ✅ |
+| **RAID Actions Board** (fixed 4-column kanban, drag to change status) | ✅ |
+| **Timeline RAID overlay** (amber flag markers at due dates, toggle chip) | ✅ |
+| **PendingApproval governance workflow** (complete action → approver reviews → approve/reject) | ✅ |
+| **RAID scoring engine** (MOD-aligned probability bands, RAG 1–25 scale) | ✅ |
+| **Defence-sector seed data** (12 risks R01–R12, 19 actions RA01–RA19) | ✅ |
 
 ### Known limitations (not yet implemented)
 
