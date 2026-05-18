@@ -7,11 +7,14 @@
 import { Risk } from './risk';
 import { RaidAction } from './raidAction';
 import { ExternalDependency } from './externalDependency';
+import { Deliverable } from './deliverable';
 export type { Risk, RiskScore, RiskScores, RiskStatus, RiskCategory, RagColour, ImpactBand, ProbabilityBand, ResponseItem, Proximity } from './risk';
 export { PROXIMITY_BANDS, getProximityFromDate } from './risk';
 export type { RaidAction, ActionStatus } from './raidAction';
 export type { ExternalDependency, DepStatus } from './externalDependency';
 export { getSuggestedStatus, isOverdue as isExtDepOverdue } from './externalDependency';
+export type { Deliverable, DeliverableStatus, AcceptanceCriterion } from './deliverable';
+export { getCompletionPercentage, canBeAccepted, isOverdue as isDeliverableOverdue, getDeliverablesReadyForAcceptance } from './deliverable';
 
 export type TaskStatusKey = string; // a key into AppDomainState.columns
 export type SwimlaneKey = string; // a key into AppDomainState.swimlanes
@@ -116,7 +119,7 @@ export interface Person {
   adSyncedAt?: string;
 }
 
-export type ViewMode = 'board' | 'timeline' | 'riskRegister' | 'raidBoard' | 'extDepRegister';
+export type ViewMode = 'board' | 'timeline' | 'riskRegister' | 'raidBoard' | 'extDepRegister' | 'deliverableRegister';
 export type GroupBy = 'swimlane' | 'parent' | 'status' | 'none';
 
 export interface AppDomainState {
@@ -128,6 +131,7 @@ export interface AppDomainState {
   risks: Risk[];
   raidActions: RaidAction[];
   externalDependencies: ExternalDependency[];
+  deliverables: Deliverable[];
 }
 
 export interface AppViewState {
@@ -162,6 +166,10 @@ export interface AppViewState {
   externalDependenciesVisibleInTimeline: boolean;
   /** ID of the currently selected external dependency, or null. */
   selectedExtDepId: string | null;
+  /** When true, Deliverables appear as an overlay layer on the Timeline. */
+  deliverablesVisibleInTimeline: boolean;
+  /** ID of the currently selected deliverable, or null. */
+  selectedDeliverableId: string | null;
 }
 
 export interface TaskMovement {

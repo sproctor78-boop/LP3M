@@ -11,6 +11,7 @@ import { recomputeSchedule } from '../engine/scheduleEngine';
 import { deepCopyTasks } from '../engine/dependencyEngine';
 import { seedRisks, seedRaidActions } from './raidSeedData';
 import { seedExternalDependencies } from './externalDependencySeedData';
+import { seedDeliverables } from './deliverableSeedData';
 
 export function seedPeople(): Person[] {
   return [
@@ -279,5 +280,6 @@ export function createInitialDomainState(): AppDomainState {
     risks: seedRisks(),
     raidActions: seedRaidActions(),
     externalDependencies: seedExternalDependencies(),
+    deliverables: seedDeliverables(),
   };
 }

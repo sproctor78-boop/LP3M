@@ -10,8 +10,8 @@ import { AppState } from '../domain/types';
 import { createInitialDomainState } from '../domain/seedData';
 import { DEFAULT_TASK_LIST_WIDTH, DEFAULT_ZOOM } from '../domain/constants';
 
-const STORE_KEY = 'ripple_state_v7';
-const STORE_VERSION = 7;
+const STORE_KEY = 'ripple_state_v8';
+const STORE_VERSION = 8;
 
 interface StoredEnvelope {
   version: number;
@@ -45,6 +45,8 @@ export function createInitialAppState(): AppState {
       riskRegisterCollapseState: { inherentCollapsed: true, residualCollapsed: false },
       externalDependenciesVisibleInTimeline: false,
       selectedExtDepId: null,
+      deliverablesVisibleInTimeline: false,
+      selectedDeliverableId: null,
     },
     pendingForecast: null,
     pendingChange: null,
@@ -72,7 +74,7 @@ function isValidEnvelope(value: unknown): value is StoredEnvelope {
 function migrateView(view: AppState['view']): AppState['view'] {
   const raw = view as unknown as Record<string, unknown>;
   const rawMode = raw.mode;
-  const validModes = ['board', 'timeline', 'riskRegister', 'raidBoard', 'extDepRegister'];
+  const validModes = ['board', 'timeline', 'riskRegister', 'raidBoard', 'extDepRegister', 'deliverableRegister'];
   const mode = validModes.includes(rawMode as string) ? (rawMode as AppState['view']['mode']) : 'timeline';
   const taskListWidth =
     typeof raw.taskListWidth === 'number' && raw.taskListWidth > 0
@@ -96,6 +98,12 @@ function migrateView(view: AppState['view']): AppState['view'] {
       : false;
   const selectedExtDepId =
     typeof raw.selectedExtDepId === 'string' ? raw.selectedExtDepId : null;
+  const deliverablesVisibleInTimeline =
+    typeof raw.deliverablesVisibleInTimeline === 'boolean'
+      ? raw.deliverablesVisibleInTimeline
+      : false;
+  const selectedDeliverableId =
+    typeof raw.selectedDeliverableId === 'string' ? raw.selectedDeliverableId : null;
   return {
     ...view,
     mode,
@@ -108,6 +116,8 @@ function migrateView(view: AppState['view']): AppState['view'] {
     riskRegisterCollapseState,
     externalDependenciesVisibleInTimeline,
     selectedExtDepId,
+    deliverablesVisibleInTimeline,
+    selectedDeliverableId,
   };
 }
 
@@ -121,6 +131,7 @@ function migrateDomain(domain: AppState['domain']): AppState['domain'] {
   const risks = Array.isArray(raw.risks) ? raw.risks : [];
   const raidActions = Array.isArray(raw.raidActions) ? raw.raidActions : [];
   const externalDependencies = Array.isArray(raw.externalDependencies) ? raw.externalDependencies : [];
+  const deliverables = Array.isArray(raw.deliverables) ? raw.deliverables : [];
   const migratedRisks = risks.map((r: unknown) => {
     const risk = r as Record<string, unknown>;
     if (!risk.proximity) return { ...risk, proximity: 'MediumTerm' };
@@ -132,6 +143,7 @@ function migrateDomain(domain: AppState['domain']): AppState['domain'] {
     risks: migratedRisks,
     raidActions,
     externalDependencies: externalDependencies as AppState['domain']['externalDependencies'],
+    deliverables: deliverables as AppState['domain']['deliverables'],
     tasks: domain.tasks.map((task) => {
       const t = task as unknown as Record<string, unknown>;
       return {
