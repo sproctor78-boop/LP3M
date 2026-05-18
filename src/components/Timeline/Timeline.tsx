@@ -28,6 +28,7 @@ import {
   TOTAL_HEADER_HEIGHT,
 } from './layoutEngine';
 import { RaidActionsOverlay, RAID_BAND_HEIGHT } from './RaidActionsOverlay';
+import { ExternalDependenciesOverlay, EXT_DEP_BAND_HEIGHT } from './ExternalDependenciesOverlay';
 import { formatNice } from '../../engine/dateUtils';
 import { showHint } from '../Toasts/Hint';
 
@@ -54,6 +55,8 @@ interface Props {
   onSetMilestonesOnly: (value: boolean) => void;
   onSetRaidActionsVisible: (value: boolean) => void;
   onSelectAction: (actionId: string) => void;
+  onSetExtDepVisible: (value: boolean) => void;
+  onSelectExtDep: (depId: string) => void;
   showImpactStrip: boolean;
   onClearScrollToTask?: () => void;
 }
@@ -88,6 +91,8 @@ export function Timeline({
   onSetMilestonesOnly,
   onSetRaidActionsVisible,
   onSelectAction,
+  onSetExtDepVisible,
+  onSelectExtDep,
   showImpactStrip,
   onClearScrollToTask,
 }: Props) {
@@ -343,7 +348,12 @@ export function Timeline({
 
   const gridContentHeight = layout.totalHeight;
   const raidBandVisible = state.view.raidActionsVisibleInTimeline;
-  const gridTotalHeight = gridContentHeight + TOTAL_HEADER_HEIGHT + (raidBandVisible ? RAID_BAND_HEIGHT + 8 : 0);
+  const extDepVisible = state.view.externalDependenciesVisibleInTimeline;
+  const gridTotalHeight =
+    gridContentHeight +
+    TOTAL_HEADER_HEIGHT +
+    (raidBandVisible ? RAID_BAND_HEIGHT + 8 : 0) +
+    (extDepVisible ? EXT_DEP_BAND_HEIGHT + 4 : 0);
 
   return (
     <section className="timeline-panel">
@@ -422,6 +432,18 @@ export function Timeline({
               <path d="M2 2 L2 10 L7 7 L7 5 L2 5" strokeLinejoin="round" />
             </svg>
             RAID actions
+          </button>
+          <button
+            type="button"
+            className={`milestones-only-chip${state.view.externalDependenciesVisibleInTimeline ? ' active' : ''}`}
+            onClick={() => onSetExtDepVisible(!state.view.externalDependenciesVisibleInTimeline)}
+            title={state.view.externalDependenciesVisibleInTimeline ? 'Hide external dependencies' : 'Show external dependencies'}
+          >
+            <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M1 6 L5 2 L5 10 Z" fill="currentColor" stroke="none" />
+              <line x1="5" y1="6" x2="11" y2="6" strokeLinecap="round" />
+            </svg>
+            External dependencies
           </button>
           <ZoomControls zoom={state.view.zoom} onZoomChange={onZoom} onFit={handleFit} />
         </div>
@@ -515,12 +537,15 @@ export function Timeline({
                     style={{
                       left: xOf(today),
                       top: 0,
-                      height: gridContentHeight + (state.view.raidActionsVisibleInTimeline ? RAID_BAND_HEIGHT + 8 : 0),
+                      height:
+                        gridContentHeight +
+                        (raidBandVisible ? RAID_BAND_HEIGHT + 8 : 0) +
+                        (extDepVisible ? EXT_DEP_BAND_HEIGHT + 4 : 0),
                     }}
                   />
                 ) : null}
 
-                {state.view.raidActionsVisibleInTimeline ? (
+                {raidBandVisible ? (
                   <div style={{ position: 'absolute', top: gridContentHeight + 4, left: 0 }}>
                     <RaidActionsOverlay
                       actions={state.domain.raidActions}
@@ -531,6 +556,27 @@ export function Timeline({
                       selectedActionId={state.view.selectedActionId}
                       onSelectAction={(actionId) => {
                         onSelectAction(actionId);
+                      }}
+                    />
+                  </div>
+                ) : null}
+
+                {extDepVisible ? (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: gridContentHeight + 4 + (raidBandVisible ? RAID_BAND_HEIGHT + 8 : 0),
+                      left: 0,
+                    }}
+                  >
+                    <ExternalDependenciesOverlay
+                      deps={state.domain.externalDependencies}
+                      window_={window_}
+                      dayWidth={dayWidth}
+                      totalWidth={totalWidth}
+                      selectedExtDepId={state.view.selectedExtDepId}
+                      onSelectDep={(depId) => {
+                        onSelectExtDep(depId);
                       }}
                     />
                   </div>

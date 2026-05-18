@@ -10,6 +10,7 @@ import { AppDomainState, Person, WorkItem } from './types';
 import { recomputeSchedule } from '../engine/scheduleEngine';
 import { deepCopyTasks } from '../engine/dependencyEngine';
 import { seedRisks, seedRaidActions } from './raidSeedData';
+import { seedExternalDependencies } from './externalDependencySeedData';
 
 export function seedPeople(): Person[] {
   return [
@@ -277,5 +278,6 @@ export function createInitialDomainState(): AppDomainState {
     people: seedPeople(),
     risks: seedRisks(),
     raidActions: seedRaidActions(),
+    externalDependencies: seedExternalDependencies(),
   };
 }

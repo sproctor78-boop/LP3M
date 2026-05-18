@@ -18,6 +18,7 @@ const VIEW_MODES: { key: ViewMode; label: string }[] = [
   { key: 'board', label: 'Board' },
   { key: 'riskRegister', label: 'Risk Register' },
   { key: 'raidBoard', label: 'RAID Actions' },
+  { key: 'extDepRegister', label: 'External Dependencies' },
 ];
 
 export function AppShell({

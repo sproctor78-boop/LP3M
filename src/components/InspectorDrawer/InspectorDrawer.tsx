@@ -1,9 +1,11 @@
-import { AppState, ImpactBand, Person, RaidAction, Risk, RiskScore, WorkItem } from '../../domain/types';
+import { AppState, ExternalDependency, ImpactBand, Person, RaidAction, Risk, RiskScore, WorkItem } from '../../domain/types';
 import { TaskInspector } from './TaskInspector';
 import { ImpactPanel } from './ImpactPanel';
 import { RiskInspector } from '../RiskRegister/RiskInspector';
 import { RiskCreateForm } from '../RiskRegister/RiskCreateForm';
 import { RaidActionInspector } from './RaidActionInspector';
+import { ExternalDependencyCreateForm } from '../ExternalDependenciesRegister/ExternalDependencyCreateForm';
+import { ExternalDependencyInspector } from '../ExternalDependenciesRegister/ExternalDependencyInspector';
 
 interface Props {
   state: AppState;
@@ -37,6 +39,14 @@ interface Props {
   showRiskCreate?: boolean;
   onCreateRisk?: (risk: Risk) => void;
   onCloseRiskCreate?: () => void;
+  // External dependency create/edit
+  showExtDepCreate?: boolean;
+  selectedExtDep?: ExternalDependency | null;
+  onCreateExtDep?: (dep: ExternalDependency) => void;
+  onCloseExtDepCreate?: () => void;
+  onUpdateExtDep?: (depId: string, patch: Partial<ExternalDependency>) => void;
+  onRemoveExtDep?: (depId: string) => void;
+  today?: string;
 }
 
 export function InspectorDrawer({
@@ -70,14 +80,27 @@ export function InspectorDrawer({
   showRiskCreate,
   onCreateRisk,
   onCloseRiskCreate,
+  showExtDepCreate,
+  selectedExtDep,
+  onCreateExtDep,
+  onCloseExtDepCreate,
+  onUpdateExtDep,
+  onRemoveExtDep,
+  today = new Date().toISOString().slice(0, 10),
 }: Props) {
   const fc = state.pendingForecast;
   let kicker = 'Inspector';
   let title = 'Select an item';
 
-  if (showRiskCreate) {
+  if (showExtDepCreate) {
+    kicker = 'New External Dependency';
+    title = 'Create dependency';
+  } else if (showRiskCreate) {
     kicker = 'New Risk';
     title = 'Create risk';
+  } else if (selectedExtDep) {
+    kicker = 'External Dependency';
+    title = selectedExtDep.title;
   } else if (fc) {
     kicker = 'Schedule impact';
     title = state.domain.tasks.find((t) => t.id === fc.changedTaskId)?.title ?? 'Forecast';
@@ -93,11 +116,29 @@ export function InspectorDrawer({
   }
 
   let body: JSX.Element;
-  if (showRiskCreate && onCreateRisk && onCloseRiskCreate) {
+  if (showExtDepCreate && onCreateExtDep && onCloseExtDepCreate) {
+    body = (
+      <ExternalDependencyCreateForm
+        tasks={state.domain.tasks}
+        onSave={onCreateExtDep}
+        onClose={onCloseExtDepCreate}
+      />
+    );
+  } else if (showRiskCreate && onCreateRisk && onCloseRiskCreate) {
     body = (
       <RiskCreateForm
         onSave={onCreateRisk}
         onClose={onCloseRiskCreate}
+      />
+    );
+  } else if (selectedExtDep && onUpdateExtDep && onRemoveExtDep) {
+    body = (
+      <ExternalDependencyInspector
+        dep={selectedExtDep}
+        tasks={state.domain.tasks}
+        today={today}
+        onUpdate={onUpdateExtDep}
+        onRemove={onRemoveExtDep}
       />
     );
   } else if (fc) {
@@ -170,10 +211,12 @@ export function InspectorDrawer({
     );
   }
 
-  const drawerOpen = state.view.drawerOpen || !!showRiskCreate;
+  const drawerOpen = state.view.drawerOpen || !!showRiskCreate || !!showExtDepCreate;
+
+  const isWide = wide || showExtDepCreate;
 
   return (
-    <aside className={`drawer${drawerOpen ? ' open' : ''}${wide ? ' wide' : ''}`}>
+    <aside className={`drawer${drawerOpen ? ' open' : ''}${isWide ? ' wide' : ''}`}>
       <div className="drawer-header">
         <button
           type="button"

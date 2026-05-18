@@ -92,6 +92,13 @@ export function computeTimelineWindow(state: AppState): TimelineWindow {
       if (a.dueDate > maxDate) maxDate = a.dueDate;
     });
   }
+  // Include external dependency target dates when overlay is visible
+  if (state.view.externalDependenciesVisibleInTimeline) {
+    state.domain.externalDependencies.forEach((d) => {
+      if (d.targetDate < minDate) minDate = d.targetDate;
+      if (d.targetDate > maxDate) maxDate = d.targetDate;
+    });
+  }
 
   // Fall back to today if no tasks
   if (minDate === '9999-12-31') {
