@@ -13,6 +13,8 @@ import {
   ViewMode,
   WorkItem,
 } from '../domain/types';
+import { ImpactBand, Risk, RiskScore, RiskStatus } from '../domain/risk';
+import { ActionStatus, RaidAction } from '../domain/raidAction';
 import {
   addDependency,
   deepCopyTasks,
@@ -68,7 +70,22 @@ export type AppAction =
   // People management
   | { type: 'addPerson'; person: Person }
   | { type: 'updatePerson'; personId: string; patch: Partial<Person> }
-  | { type: 'removePerson'; personId: string };
+  | { type: 'removePerson'; personId: string }
+  // RAID — view
+  | { type: 'selectRisk'; riskId: string | null; openDrawer?: boolean }
+  | { type: 'setRaidActionsVisible'; value: boolean }
+  // RAID — risk CRUD
+  | { type: 'createRisk'; risk: Risk }
+  | { type: 'updateRisk'; riskId: string; patch: Partial<Risk> }
+  | { type: 'deleteRisk'; riskId: string }
+  // RAID — action CRUD
+  | { type: 'createRaidAction'; action: RaidAction }
+  | { type: 'updateRaidAction'; actionId: string; patch: Partial<RaidAction> }
+  | { type: 'deleteRaidAction'; actionId: string }
+  // RAID — PendingApproval flow
+  | { type: 'completeRaidAction'; actionId: string; effectiveness: ImpactBand }
+  | { type: 'approveResidualScore'; riskId: string; newResidual: RiskScore }
+  | { type: 'rejectResidualScore'; riskId: string };
 
 function withRecomputedTasks(state: AppState, nextTasks: WorkItem[]): AppState {
   return {
@@ -116,6 +133,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         view: {
           ...state.view,
           selectedTaskId: action.taskId,
+          selectedRiskId: null,
           drawerOpen: action.openDrawer ?? state.view.drawerOpen,
           selectedDep: null,
         },
@@ -369,6 +387,111 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         assignees: t.assignees.filter((id) => id !== action.personId),
       }));
       return { ...state, domain: { ...state.domain, people, tasks } };
+    }
+
+    // ------- RAID view -------
+    case 'selectRisk':
+      return {
+        ...state,
+        view: {
+          ...state.view,
+          selectedRiskId: action.riskId,
+          selectedTaskId: null,
+          drawerOpen: action.openDrawer ?? state.view.drawerOpen,
+        },
+      };
+    case 'setRaidActionsVisible':
+      return { ...state, view: { ...state.view, raidActionsVisibleInTimeline: action.value } };
+
+    // ------- RAID risk CRUD -------
+    case 'createRisk':
+      return { ...state, domain: { ...state.domain, risks: [...state.domain.risks, action.risk] } };
+    case 'updateRisk': {
+      const risks = state.domain.risks.map((r) =>
+        r.id === action.riskId
+          ? { ...r, ...action.patch, lastModifiedAt: new Date().toISOString() }
+          : r,
+      );
+      return { ...state, domain: { ...state.domain, risks } };
+    }
+    case 'deleteRisk': {
+      const risks = state.domain.risks.filter((r) => r.id !== action.riskId);
+      const raidActions = state.domain.raidActions.filter((a) => a.riskId !== action.riskId);
+      const newRiskId = state.view.selectedRiskId === action.riskId ? null : state.view.selectedRiskId;
+      return {
+        ...state,
+        domain: { ...state.domain, risks, raidActions },
+        view: {
+          ...state.view,
+          selectedRiskId: newRiskId,
+          drawerOpen: newRiskId !== null && state.view.drawerOpen,
+        },
+      };
+    }
+
+    // ------- RAID action CRUD -------
+    case 'createRaidAction':
+      return {
+        ...state,
+        domain: { ...state.domain, raidActions: [...state.domain.raidActions, action.action] },
+      };
+    case 'updateRaidAction': {
+      const raidActions = state.domain.raidActions.map((a) =>
+        a.id === action.actionId
+          ? { ...a, ...action.patch, lastModifiedAt: new Date().toISOString() }
+          : a,
+      );
+      return { ...state, domain: { ...state.domain, raidActions } };
+    }
+    case 'deleteRaidAction': {
+      const raidActions = state.domain.raidActions.filter((a) => a.id !== action.actionId);
+      return { ...state, domain: { ...state.domain, raidActions } };
+    }
+
+    // ------- RAID PendingApproval flow -------
+    case 'completeRaidAction': {
+      const raidActions = state.domain.raidActions.map((a) =>
+        a.id === action.actionId
+          ? {
+              ...a,
+              status: 'Done' as ActionStatus,
+              completionEffectiveness: action.effectiveness,
+              completedAt: new Date().toISOString(),
+              lastModifiedAt: new Date().toISOString(),
+            }
+          : a,
+      );
+      const completedAction = state.domain.raidActions.find((a) => a.id === action.actionId);
+      const risks = completedAction
+        ? state.domain.risks.map((r) =>
+            r.id === completedAction.riskId
+              ? { ...r, status: 'PendingApproval' as RiskStatus, lastModifiedAt: new Date().toISOString() }
+              : r,
+          )
+        : state.domain.risks;
+      return { ...state, domain: { ...state.domain, raidActions, risks } };
+    }
+    case 'approveResidualScore': {
+      const risks = state.domain.risks.map((r) => {
+        if (r.id !== action.riskId) return r;
+        const isNowMitigated = action.newResidual.score <= r.scores.target.score;
+        return {
+          ...r,
+          scores: { ...r.scores, residual: action.newResidual },
+          proposedResidualScore: null,
+          status: (isNowMitigated ? 'Mitigated' : 'Open') as RiskStatus,
+          lastModifiedAt: new Date().toISOString(),
+        };
+      });
+      return { ...state, domain: { ...state.domain, risks } };
+    }
+    case 'rejectResidualScore': {
+      const risks = state.domain.risks.map((r) =>
+        r.id === action.riskId
+          ? { ...r, proposedResidualScore: null, status: 'Open' as RiskStatus, lastModifiedAt: new Date().toISOString() }
+          : r,
+      );
+      return { ...state, domain: { ...state.domain, risks } };
     }
 
     default: {

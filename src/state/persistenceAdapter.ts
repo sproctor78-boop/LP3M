@@ -10,8 +10,8 @@ import { AppState } from '../domain/types';
 import { createInitialDomainState } from '../domain/seedData';
 import { DEFAULT_TASK_LIST_WIDTH, DEFAULT_ZOOM } from '../domain/constants';
 
-const STORE_KEY = 'ripple_state_v3';
-const STORE_VERSION = 3;
+const STORE_KEY = 'ripple_state_v4';
+const STORE_VERSION = 4;
 
 interface StoredEnvelope {
   version: number;
@@ -39,6 +39,8 @@ export function createInitialAppState(): AppState {
       taskListWidth: DEFAULT_TASK_LIST_WIDTH,
       scrollToTaskId: null,
       milestonesOnly: false,
+      raidActionsVisibleInTimeline: false,
+      selectedRiskId: null,
     },
     pendingForecast: null,
     pendingChange: null,
@@ -61,30 +63,39 @@ function isValidEnvelope(value: unknown): value is StoredEnvelope {
 
 /**
  * Migrate a persisted view object to the current shape. Older versions used
- * `mode: 'both'` (now removed) and did not have `taskListWidth`.
+ * `mode: 'both'` (now removed) and did not have `taskListWidth` or RAID fields.
  */
 function migrateView(view: AppState['view']): AppState['view'] {
   const raw = view as unknown as Record<string, unknown>;
   const rawMode = raw.mode;
-  const mode = rawMode === 'board' || rawMode === 'timeline' ? rawMode : 'timeline';
+  const validModes = ['board', 'timeline', 'riskRegister', 'raidBoard'];
+  const mode = validModes.includes(rawMode as string) ? (rawMode as AppState['view']['mode']) : 'timeline';
   const taskListWidth =
     typeof raw.taskListWidth === 'number' && raw.taskListWidth > 0
       ? (raw.taskListWidth as number)
       : DEFAULT_TASK_LIST_WIDTH;
   const milestonesOnly = typeof raw.milestonesOnly === 'boolean' ? raw.milestonesOnly : false;
-  return { ...view, mode, taskListWidth, scrollToTaskId: null, milestonesOnly };
+  const raidActionsVisibleInTimeline =
+    typeof raw.raidActionsVisibleInTimeline === 'boolean' ? raw.raidActionsVisibleInTimeline : false;
+  const selectedRiskId =
+    typeof raw.selectedRiskId === 'string' ? raw.selectedRiskId : null;
+  return { ...view, mode, taskListWidth, scrollToTaskId: null, milestonesOnly, raidActionsVisibleInTimeline, selectedRiskId };
 }
 
 /**
  * Migrate a persisted domain: fill any fields that may be absent in older
- * stored versions (percentComplete, assignees, people).
+ * stored versions (percentComplete, assignees, people, risks, raidActions).
  */
 function migrateDomain(domain: AppState['domain']): AppState['domain'] {
   const raw = domain as unknown as Record<string, unknown>;
   const people = Array.isArray(raw.people) ? raw.people : [];
+  const risks = Array.isArray(raw.risks) ? raw.risks : [];
+  const raidActions = Array.isArray(raw.raidActions) ? raw.raidActions : [];
   return {
     ...domain,
     people,
+    risks,
+    raidActions,
     tasks: domain.tasks.map((task) => {
       const t = task as unknown as Record<string, unknown>;
       return {

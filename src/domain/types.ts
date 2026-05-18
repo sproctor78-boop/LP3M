@@ -4,6 +4,11 @@
 // Pure data types describing the schedule. No React, no DOM, no browser APIs.
 // =============================================================================
 
+import { Risk } from './risk';
+import { RaidAction } from './raidAction';
+export type { Risk, RiskScore, RiskScores, RiskStatus, RiskCategory, RagColour, ImpactBand, ProbabilityBand, ResponseItem } from './risk';
+export type { RaidAction, ActionStatus } from './raidAction';
+
 export type TaskStatusKey = string; // a key into AppDomainState.columns
 export type SwimlaneKey = string; // a key into AppDomainState.swimlanes
 
@@ -107,7 +112,7 @@ export interface Person {
   adSyncedAt?: string;
 }
 
-export type ViewMode = 'board' | 'timeline';
+export type ViewMode = 'board' | 'timeline' | 'riskRegister' | 'raidBoard';
 export type GroupBy = 'swimlane' | 'parent' | 'status' | 'none';
 
 export interface AppDomainState {
@@ -116,6 +121,8 @@ export interface AppDomainState {
   swimlanes: Swimlane[];
   workingCalendar: WorkingCalendar;
   people: Person[];
+  risks: Risk[];
+  raidActions: RaidAction[];
 }
 
 export interface AppViewState {
@@ -138,6 +145,10 @@ export interface AppViewState {
   scrollToTaskId: string | null;
   /** When true, the timeline shows only milestone tasks. */
   milestonesOnly: boolean;
+  /** When true, RAID Actions appear as an overlay layer on the Timeline. */
+  raidActionsVisibleInTimeline: boolean;
+  /** ID of the currently selected risk, or null. */
+  selectedRiskId: string | null;
 }
 
 export interface TaskMovement {
