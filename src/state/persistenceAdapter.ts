@@ -10,8 +10,8 @@ import { AppState } from '../domain/types';
 import { createInitialDomainState } from '../domain/seedData';
 import { DEFAULT_TASK_LIST_WIDTH, DEFAULT_ZOOM } from '../domain/constants';
 
-const STORE_KEY = 'ripple_state_v4';
-const STORE_VERSION = 4;
+const STORE_KEY = 'ripple_state_v5';
+const STORE_VERSION = 5;
 
 interface StoredEnvelope {
   version: number;
