@@ -11,16 +11,16 @@
 
 ### 1.1 Probability % → 1–5 band
 
-Non-linear: the upper bands are compressed so that "medium" sits at the
-intuitive midpoint and "high" genuinely means likely.
+Symmetric quintiles aligned with MOD / HM Treasury Orange Book practice.
+Each band covers roughly equal probability territory.
 
 | Band | Label | Probability % range |
 |------|-------|---------------------|
 | 1 | Very Low | 0–10% |
-| 2 | Low | 11–25% |
-| 3 | Medium | 26–50% |
-| 4 | High | 51–75% |
-| 5 | Very High | 76–100% |
+| 2 | Low | 11–30% |
+| 3 | Medium | 31–50% |
+| 4 | High | 51–70% |
+| 5 | Very High | 71–100% |
 
 ### 1.2 Cost (£) impact 1–5 bands
 
@@ -168,44 +168,31 @@ condition applies.
 1. User marks a `RaidAction` as Done and provides `completionEffectiveness` (1–5).
 2. `completeRaidAction` reducer:
    - Sets `action.status = 'Done'`, `action.completedAt`, `action.completionEffectiveness`.
-   - Calculates `proposedResidualScore` from the parent risk's current `residual`:
-     ```
-     Proposed probability % = residual.probabilityPct × (1 − effectiveness × 0.12)
-     ```
-     Clamped to [1, residual.probabilityPct]. Band and score re-derived.
-     Cost and time impact bands carry over unchanged (the action affects
-     likelihood, not consequence magnitude, unless overridden in a future pass).
-   - Sets `risk.proposedResidualScore = calculatedScore`.
    - Sets `risk.status = 'PendingApproval'`.
+   - `risk.proposedResidualScore` remains `null` at this point — it is populated
+     by the approver in step 3 below.
 
-3. **Approve:** `approveResidualScore` reducer:
-   - `risk.scores.residual = risk.proposedResidualScore`.
+3. **Approve:** `approveResidualScore` reducer — takes `newResidual: RiskScore`
+   entered manually by the approver (the previous residual is shown alongside
+   for reference in the UI):
+   - `risk.scores.residual = action.newResidual`.
    - `risk.proposedResidualScore = null`.
-   - `risk.status = residual.score <= target.score ? 'Mitigated' : 'Open'`.
+   - `risk.status = newResidual.score <= target.score ? 'Mitigated' : 'Open'`.
 
 4. **Reject:** `rejectResidualScore` reducer:
    - `risk.proposedResidualScore = null`.
    - `risk.status = 'Open'`.
 
-The effectiveness→probability-reduction formula:
-
-| Effectiveness | Probability reduction |
-|---|---|
-| 1 | ×0.88 (−12%) |
-| 2 | ×0.76 (−24%) |
-| 3 | ×0.64 (−36%) |
-| 4 | ×0.52 (−48%) |
-| 5 | ×0.40 (−60%) |
-
-*Steven: if you'd prefer the approver to manually input the new residual
-rather than accepting an auto-calculated proposal, flag it — it's a one-line
-change in the reducer.*
+No auto-calculation formula. The approver is the governance actor who decides
+what the new residual should be based on their professional assessment of the
+completed action's effect. Auto-suggest can be added later if there is demand.
 
 ---
 
-## 5. CSV export — proposed column list
+## 5. CSV export — column list
 
-One row per risk; actions are summarised as counts.
+One row per risk. Action data not included; a separate actions export will
+be added in a future pass if required.
 
 ```
 ID
@@ -233,14 +220,9 @@ Target Cost Impact Band
 Target Time Impact Band
 Target Score
 Target RAG
-Control Count
-Mitigation Count
-Actions Total
-Actions Todo
-Actions In Progress
-Actions Done
-Actions Overdue
 ```
+
+22 columns.
 
 ---
 
@@ -268,7 +250,7 @@ the existing Ripple seed data theme.
 | Category | Regulatory |
 | Owner | Rebecca Tan (P03) |
 | Status | Open |
-| Inherent | 30% / Band 3 × Cost 2 × Time 3 → score **9** Amber |
+| Inherent | 30% / Band 2 × Cost 2 × Time 3 → score **6** Amber |
 | Residual | 15% / Band 2 × Cost 2 × Time 3 → score **6** Amber |
 | Target | Band 1 × Cost 2 × Time 2 → score **2** Green |
 | Controls | Standing early-engagement protocol with ECJU |
@@ -356,7 +338,7 @@ the existing Ripple seed data theme.
 | Category | Commercial |
 | Owner | Rebecca Tan (P03) |
 | Status | Mitigated |
-| Inherent | 25% / Band 3 × Cost 2 × Time 1 → score **6** Amber |
+| Inherent | 25% / Band 2 × Cost 2 × Time 1 → score **4** Green |
 | Residual | 10% / Band 1 × Cost 2 × Time 1 → score **2** Green |
 | Target | Band 1 × Cost 1 × Time 1 → score **1** Green |
 | Controls | Forward purchasing agreement covering all committed USD spend |
@@ -367,7 +349,7 @@ the existing Ripple seed data theme.
 | Category | Technical |
 | Owner | David Chen (P04) |
 | Status | Open |
-| Inherent | 50% / Band 4 × Cost 3 × Time 4 → score **16** Red |
+| Inherent | 55% / Band 4 × Cost 3 × Time 4 → score **16** Red |
 | Residual | 25% / Band 3 × Cost 2 × Time 3 → score **9** Amber |
 | Target | Band 2 × Cost 2 × Time 2 → score **4** Green |
 | Controls | Priority booking of MOD integration facility (ITEF) for Q3 2026 |
@@ -433,9 +415,9 @@ Action status distribution: **Done** × 6, **InProgress** × 6, **Todo** × 4, *
 
 | Dimension | Covered |
 |---|---|
-| Green inherent risk | R05 (10% × 4), R07, R09, R11 |
-| Amber inherent risk | R01, R02, R04, R06, R08, R12 |
-| Red inherent risk | R03 (65% × 4 = 16), R10 (50% × 4 = 16) |
+| Green inherent risk | R05, R07, R09 (25% Band 2 × 2 = 4), R11 |
+| Amber inherent risk | R01, R02 (30% Band 2 × 3 = 6), R04, R06, R08, R12 |
+| Red inherent risk | R03 (65% Band 4 × 4 = 16), R10 (55% Band 4 × 4 = 16) |
 | PendingApproval | R03 |
 | Mitigated | R07, R09 |
 | Controls only | R05, R07, R08, R09, R11 |

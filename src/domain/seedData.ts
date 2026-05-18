@@ -274,5 +274,8 @@ export function createInitialDomainState(): AppDomainState {
       holidays: [],
     },
     people: seedPeople(),
+    // RAID seed data added in Phase 5
+    risks: [],
+    raidActions: [],
   };
 }

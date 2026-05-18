@@ -93,7 +93,7 @@ No new files at the `Board/` level. `BoardColumn` gets a render-prop so `RaidAct
 
 // PendingApproval flow
 | { type: 'completeRaidAction'; actionId: string; effectiveness: ImpactBand }
-| { type: 'approveResidualScore'; riskId: string }
+| { type: 'approveResidualScore'; riskId: string; newResidual: RiskScore }
 | { type: 'rejectResidualScore'; riskId: string }
 ```
 
