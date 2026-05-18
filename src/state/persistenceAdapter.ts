@@ -10,8 +10,8 @@ import { AppState } from '../domain/types';
 import { createInitialDomainState } from '../domain/seedData';
 import { DEFAULT_TASK_LIST_WIDTH, DEFAULT_ZOOM } from '../domain/constants';
 
-const STORE_KEY = 'ripple_state_v4';
-const STORE_VERSION = 4;
+const STORE_KEY = 'ripple_state_v5';
+const STORE_VERSION = 5;
 
 interface StoredEnvelope {
   version: number;
@@ -41,6 +41,7 @@ export function createInitialAppState(): AppState {
       milestonesOnly: false,
       raidActionsVisibleInTimeline: false,
       selectedRiskId: null,
+      selectedActionId: null,
     },
     pendingForecast: null,
     pendingChange: null,
@@ -79,7 +80,9 @@ function migrateView(view: AppState['view']): AppState['view'] {
     typeof raw.raidActionsVisibleInTimeline === 'boolean' ? raw.raidActionsVisibleInTimeline : false;
   const selectedRiskId =
     typeof raw.selectedRiskId === 'string' ? raw.selectedRiskId : null;
-  return { ...view, mode, taskListWidth, scrollToTaskId: null, milestonesOnly, raidActionsVisibleInTimeline, selectedRiskId };
+  const selectedActionId =
+    typeof raw.selectedActionId === 'string' ? raw.selectedActionId : null;
+  return { ...view, mode, taskListWidth, scrollToTaskId: null, milestonesOnly, raidActionsVisibleInTimeline, selectedRiskId, selectedActionId };
 }
 
 /**

@@ -27,6 +27,7 @@ import {
   computeTimelineWindow,
   TOTAL_HEADER_HEIGHT,
 } from './layoutEngine';
+import { RaidActionsOverlay, RAID_BAND_HEIGHT } from './RaidActionsOverlay';
 import { formatNice } from '../../engine/dateUtils';
 import { showHint } from '../Toasts/Hint';
 
@@ -51,6 +52,8 @@ interface Props {
   onMoveTaskStatus: (taskId: string, status: string) => void;
   onAddSwimlane: () => void;
   onSetMilestonesOnly: (value: boolean) => void;
+  onSetRaidActionsVisible: (value: boolean) => void;
+  onSelectAction: (actionId: string) => void;
   showImpactStrip: boolean;
   onClearScrollToTask?: () => void;
 }
@@ -83,6 +86,8 @@ export function Timeline({
   onMoveTaskStatus,
   onAddSwimlane,
   onSetMilestonesOnly,
+  onSetRaidActionsVisible,
+  onSelectAction,
   showImpactStrip,
   onClearScrollToTask,
 }: Props) {
@@ -337,6 +342,8 @@ export function Timeline({
   };
 
   const gridContentHeight = layout.totalHeight;
+  const raidBandVisible = state.view.raidActionsVisibleInTimeline;
+  const gridTotalHeight = gridContentHeight + TOTAL_HEADER_HEIGHT + (raidBandVisible ? RAID_BAND_HEIGHT + 8 : 0);
 
   return (
     <section className="timeline-panel">
@@ -405,6 +412,17 @@ export function Timeline({
             </svg>
             Milestones only
           </button>
+          <button
+            type="button"
+            className={`milestones-only-chip${state.view.raidActionsVisibleInTimeline ? ' active' : ''}`}
+            onClick={() => onSetRaidActionsVisible(!state.view.raidActionsVisibleInTimeline)}
+            title={state.view.raidActionsVisibleInTimeline ? 'Hide RAID actions' : 'Show RAID actions'}
+          >
+            <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M2 2 L2 10 L7 7 L7 5 L2 5" strokeLinejoin="round" />
+            </svg>
+            RAID actions
+          </button>
           <ZoomControls zoom={state.view.zoom} onZoomChange={onZoom} onFit={handleFit} />
         </div>
       </div>
@@ -429,7 +447,7 @@ export function Timeline({
           <div className="timeline-scroll" ref={ganttScrollRef}>
             <div
               className="timeline-grid"
-              style={{ width: totalWidth, height: gridContentHeight + TOTAL_HEADER_HEIGHT, position: 'relative' }}
+              style={{ width: totalWidth, height: gridTotalHeight, position: 'relative' }}
             >
               <TimelineHeader
                 window={window_}
@@ -497,9 +515,25 @@ export function Timeline({
                     style={{
                       left: xOf(today),
                       top: 0,
-                      height: gridContentHeight,
+                      height: gridContentHeight + (state.view.raidActionsVisibleInTimeline ? RAID_BAND_HEIGHT + 8 : 0),
                     }}
                   />
+                ) : null}
+
+                {state.view.raidActionsVisibleInTimeline ? (
+                  <div style={{ position: 'absolute', top: gridContentHeight + 4, left: 0 }}>
+                    <RaidActionsOverlay
+                      actions={state.domain.raidActions}
+                      risks={state.domain.risks}
+                      window_={window_}
+                      dayWidth={dayWidth}
+                      totalWidth={totalWidth}
+                      selectedActionId={state.view.selectedActionId}
+                      onSelectAction={(actionId) => {
+                        onSelectAction(actionId);
+                      }}
+                    />
+                  </div>
                 ) : null}
               </div>
 

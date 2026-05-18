@@ -9,6 +9,7 @@
 import { AppDomainState, Person, WorkItem } from './types';
 import { recomputeSchedule } from '../engine/scheduleEngine';
 import { deepCopyTasks } from '../engine/dependencyEngine';
+import { seedRisks, seedRaidActions } from './raidSeedData';
 
 export function seedPeople(): Person[] {
   return [
@@ -274,8 +275,7 @@ export function createInitialDomainState(): AppDomainState {
       holidays: [],
     },
     people: seedPeople(),
-    // RAID seed data added in Phase 5
-    risks: [],
-    raidActions: [],
+    risks: seedRisks(),
+    raidActions: seedRaidActions(),
   };
 }

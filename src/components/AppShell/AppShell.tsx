@@ -16,6 +16,8 @@ interface Props {
 const VIEW_MODES: { key: ViewMode; label: string }[] = [
   { key: 'timeline', label: 'Timeline' },
   { key: 'board', label: 'Board' },
+  { key: 'riskRegister', label: 'Risk Register' },
+  { key: 'raidBoard', label: 'RAID Actions' },
 ];
 
 export function AppShell({

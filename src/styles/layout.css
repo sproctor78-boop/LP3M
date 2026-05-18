@@ -2095,3 +2095,501 @@ body.splitter-dragging * {
   filter: brightness(1.08);
 }
 
+/* ==========================================================================
+   Risk Register
+   ========================================================================== */
+
+.risk-register-panel {
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  height: 100%;
+}
+
+.risk-register-toolbar {
+  min-height: 58px;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.risk-register-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1;
+  justify-content: center;
+}
+
+.risk-register-search {
+  width: 200px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12.5px;
+}
+.risk-register-search:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  width: 240px;
+  transition: width 0.15s ease;
+}
+
+.risk-register-filter-select {
+  width: auto;
+  padding: 6px 10px;
+  font-size: 12.5px;
+}
+
+/* ---- Risk grid ---- */
+.risk-grid-wrap {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+
+.risk-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: auto;
+}
+
+.risk-grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background: var(--surface-2);
+  border-bottom: 2px solid var(--border-strong);
+  padding: 9px 14px;
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-muted);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.risk-grid thead th:hover {
+  color: var(--ink);
+  background: var(--surface-3);
+}
+.risk-grid-sort-icon {
+  color: var(--accent);
+}
+
+.risk-grid tbody tr {
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.risk-grid tbody tr:hover {
+  background: var(--surface-2);
+}
+.risk-grid tbody tr.selected {
+  background: var(--accent-soft);
+  outline: none;
+}
+.risk-grid tbody tr.selected:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.risk-grid tbody tr:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.risk-grid tbody tr.pending-approval {
+  border-left: 3px solid var(--forecast-border);
+}
+.risk-grid tbody tr.pending-approval:not(.selected) {
+  background: var(--forecast-soft);
+}
+
+.risk-grid td {
+  padding: 10px 14px;
+  vertical-align: middle;
+}
+
+.risk-grid-id {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.risk-grid-title {
+  font-weight: 500;
+  max-width: 320px;
+}
+
+.risk-grid-category {
+  font-size: 11.5px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.risk-grid-empty {
+  text-align: center;
+  padding: 40px;
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+/* ---- Score badge ---- */
+.risk-score-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.risk-score-badge--green {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #86efac;
+}
+.risk-score-badge--amber {
+  background: var(--risk-soft);
+  color: var(--risk);
+  border-color: var(--forecast-border);
+}
+.risk-score-badge--red {
+  background: var(--breach-soft);
+  color: var(--breach);
+  border-color: var(--breach-border);
+}
+
+/* ---- Status badges for risks ---- */
+.badge.risk-open {
+  background: var(--surface-3);
+  color: var(--ink-2);
+  border-color: var(--border-strong);
+}
+.badge.risk-mitigated {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #86efac;
+}
+.badge.risk-closed {
+  background: var(--locked-soft);
+  color: var(--locked);
+  border-color: var(--locked-soft);
+}
+.badge.risk-pending {
+  background: var(--forecast-soft);
+  color: var(--forecast);
+  border-color: var(--forecast-border);
+}
+
+/* ---- Risk inspector (inside drawer) ---- */
+.risk-approval-panel {
+  background: var(--forecast-soft);
+  border-bottom: 2px solid var(--forecast-border);
+  padding: 16px 20px;
+}
+.risk-approval-panel-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--forecast);
+  margin-bottom: 4px;
+}
+.risk-approval-panel-desc {
+  font-size: 12px;
+  color: var(--ink-2);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+.risk-approval-reference {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+.risk-approval-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.risk-score-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.risk-score-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  background: var(--surface-2);
+}
+.risk-score-card-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+  margin-bottom: 6px;
+}
+.risk-score-card-detail {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+  margin-top: 4px;
+}
+.risk-score-card-pct {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+  margin-top: 2px;
+}
+
+.risk-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+.risk-action-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+.risk-action-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+.risk-action-due {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+/* Action status badge colours */
+.badge.risk-action-status--todo {
+  background: var(--surface-3);
+  color: var(--ink-muted);
+}
+.badge.risk-action-status--inprogress {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+.badge.risk-action-status--done {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #86efac;
+}
+.badge.risk-action-status--overdue {
+  background: var(--breach-soft);
+  color: var(--breach);
+  border-color: var(--breach-border);
+}
+
+/* ---- RAID Actions Board card ------------------------------------------ */
+.kcard.raid-action-card {
+  border-left: 3px solid var(--forecast-border);
+}
+
+.kcard.raid-action-card.overdue {
+  border-left-color: var(--breach);
+}
+
+.kcard.raid-action-card.done {
+  opacity: 0.7;
+  border-left-color: #86efac;
+}
+
+.raid-action-risk-crumb {
+  font-weight: 600;
+  color: var(--forecast);
+}
+
+/* Action status badges on cards (lowercase key variants) */
+.badge.raid-action-status-badge {
+  font-size: 10px;
+  padding: 1px 5px;
+}
+
+.badge.raid-action-status-badge.todo {
+  background: var(--surface-3);
+  color: var(--ink-muted);
+}
+
+.badge.raid-action-status-badge.inprogress {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+
+.badge.raid-action-status-badge.done {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #86efac;
+}
+
+.badge.raid-action-status-badge.overdue {
+  background: var(--breach-soft);
+  color: var(--breach);
+  border-color: var(--breach-border);
+}
+
+/* ---- RaidActionInspector ------------------------------------------------ */
+.action-risk-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+
+.action-risk-id {
+  font-weight: 700;
+  color: var(--forecast);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.action-risk-title {
+  color: var(--ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.action-completed-note {
+  font-size: 12px;
+  color: #15803d;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.inspector-value {
+  font-size: 13px;
+  color: var(--ink);
+  padding: 6px 0;
+  display: block;
+}
+
+/* ---- RAID Actions Timeline Overlay ------------------------------------ */
+.raid-overlay-band {
+  position: relative;
+  background: var(--forecast-soft);
+  border-top: 2px solid var(--forecast-border);
+  border-radius: 0 0 4px 4px;
+  overflow: visible;
+}
+
+.raid-overlay-band::before {
+  content: 'RAID Actions';
+  position: absolute;
+  left: 6px;
+  bottom: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--forecast);
+  opacity: 0.6;
+  pointer-events: none;
+  user-select: none;
+}
+
+.raid-flag {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translateX(-50%);
+  cursor: pointer;
+  z-index: var(--z-overlay, 10);
+  transition: opacity 0.1s;
+}
+
+.raid-flag:hover {
+  z-index: var(--z-popover, 20);
+}
+
+.raid-flag:hover .raid-flag-label {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.raid-flag-label {
+  background: var(--forecast);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  transition: transform 0.1s, opacity 0.1s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.raid-flag-stem {
+  width: 1px;
+  background: var(--forecast-border);
+  flex-shrink: 0;
+}
+
+/* Status colour variants */
+.raid-flag.overdue .raid-flag-label {
+  background: var(--breach);
+}
+.raid-flag.overdue .raid-flag-stem {
+  background: var(--breach-border);
+}
+
+.raid-flag.done .raid-flag-label {
+  background: #15803d;
+}
+.raid-flag.done .raid-flag-stem {
+  background: #86efac;
+}
+
+.raid-flag.inprogress .raid-flag-label {
+  background: var(--accent);
+}
+.raid-flag.inprogress .raid-flag-stem {
+  background: var(--accent-border);
+}
+
+/* Selected state */
+.raid-flag.selected .raid-flag-label {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+

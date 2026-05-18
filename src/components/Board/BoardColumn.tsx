@@ -1,38 +1,39 @@
-import { useEffect, useRef, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { BoardColumn as Column, WorkItem } from '../../domain/types';
 import { BoardCard } from './BoardCard';
 import { showHint } from '../Toasts/Hint';
 
 interface Props {
   column: Column;
-  /** All tasks belonging in this column (own status matches). */
-  ownTasks: WorkItem[];
-  /** All tasks — used to find parents for ghost headers. */
-  allTasks: WorkItem[];
-  showCritical: boolean;
-  selectedTaskId: string | null;
-  breachTaskIds: Set<string>;
-  canDelete: boolean;
-  /** True while another card is being dragged. */
+  // Task-board mode props (all optional when renderCard is provided):
+  ownTasks?: WorkItem[];
+  allTasks?: WorkItem[];
+  showCritical?: boolean;
+  selectedTaskId?: string | null;
+  breachTaskIds?: Set<string>;
+  canDelete?: boolean;
   activeDrop: boolean;
-  /** True to autofocus the rename input on mount (for newly-added columns). */
   autoRenameOnMount?: boolean;
-  onRename: (label: string) => void;
-  onDelete: () => void;
-  onSelectTask: (taskId: string) => void;
+  onRename?: (label: string) => void;
+  onDelete?: () => void;
+  onSelectTask?: (taskId: string) => void;
   onDropTask: (taskId: string) => void;
   onDragStartCard: () => void;
   onDragEndCard: () => void;
+  // Render-prop mode (for RAID Actions Board):
+  ownItems?: Array<{ id: string }>;
+  renderCard?: (id: string, selected: boolean) => ReactNode;
+  selectedItemId?: string | null;
 }
 
 export function BoardColumn({
   column,
-  ownTasks,
-  allTasks,
-  showCritical,
-  selectedTaskId,
-  breachTaskIds,
-  canDelete,
+  ownTasks = [],
+  allTasks = [],
+  showCritical = false,
+  selectedTaskId = null,
+  breachTaskIds = new Set(),
+  canDelete = false,
   activeDrop,
   autoRenameOnMount,
   onRename,
@@ -41,6 +42,9 @@ export function BoardColumn({
   onDropTask,
   onDragStartCard,
   onDragEndCard,
+  ownItems,
+  renderCard,
+  selectedItemId,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(column.label);
@@ -49,11 +53,11 @@ export function BoardColumn({
   const mounted = useRef(false);
 
   useEffect(() => {
-    if (!mounted.current && autoRenameOnMount) {
+    if (!mounted.current && autoRenameOnMount && onRename) {
       mounted.current = true;
       setEditing(true);
     }
-  }, [autoRenameOnMount]);
+  }, [autoRenameOnMount, onRename]);
 
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -65,7 +69,7 @@ export function BoardColumn({
   const commitRename = () => {
     setEditing(false);
     if (editValue.trim() && editValue.trim() !== column.label) {
-      onRename(editValue.trim());
+      onRename?.(editValue.trim());
     } else {
       setEditValue(column.label);
     }
@@ -75,6 +79,8 @@ export function BoardColumn({
     setEditing(false);
     setEditValue(column.label);
   };
+
+  const itemCount = renderCard ? (ownItems?.length ?? 0) : ownTasks.length;
 
   // Build a "groups + orphans" layout: children whose parent is in another column
   // get a ghost parent header above them in this column.
@@ -116,9 +122,9 @@ export function BoardColumn({
       onDrop={(event) => {
         event.preventDefault();
         setIsDropTarget(false);
-        const taskId = event.dataTransfer.getData('text/plain');
-        if (taskId) {
-          onDropTask(taskId);
+        const itemId = event.dataTransfer.getData('text/plain');
+        if (itemId) {
+          onDropTask(itemId);
         }
       }}
     >
@@ -139,14 +145,14 @@ export function BoardColumn({
         ) : (
           <span
             className="kanban-col-title"
-            title="Click to rename"
-            onClick={() => setEditing(true)}
+            title={onRename ? 'Click to rename' : undefined}
+            onClick={() => onRename && setEditing(true)}
           >
             {column.label}
           </span>
         )}
-        <span className="kanban-col-count">{ownTasks.length}</span>
-        {canDelete && !editing ? (
+        <span className="kanban-col-count">{itemCount}</span>
+        {canDelete && !editing && onDelete ? (
           <button
             type="button"
             className="kanban-col-delete"
@@ -171,74 +177,81 @@ export function BoardColumn({
         ) : null}
       </div>
 
-      {parentOrder.map((parentId) => {
-        const parent = allTasks.find((p) => p.id === parentId);
-        if (!parent) return null;
-        const childrenHere = childrenByParent.get(parentId) ?? [];
-        const parentIsInCol = ownTasks.some((t) => t.id === parentId);
+      {renderCard && ownItems ? (
+        // Render-prop mode: flat list, no parent grouping
+        ownItems.map((item) => renderCard(item.id, item.id === selectedItemId))
+      ) : (
+        <>
+          {parentOrder.map((parentId) => {
+            const parent = allTasks.find((p) => p.id === parentId);
+            if (!parent) return null;
+            const childrenHere = childrenByParent.get(parentId) ?? [];
+            const parentIsInCol = ownTasks.some((t) => t.id === parentId);
 
-        const itemsToRender: WorkItem[] = [];
-        if (parentIsInCol && !renderedIds.has(parentId)) {
-          itemsToRender.push(parent);
-          renderedIds.add(parentId);
-        }
-        childrenHere.forEach((c) => {
-          if (!renderedIds.has(c.id)) {
-            itemsToRender.push(c);
-            renderedIds.add(c.id);
-          }
-        });
+            const itemsToRender: WorkItem[] = [];
+            if (parentIsInCol && !renderedIds.has(parentId)) {
+              itemsToRender.push(parent);
+              renderedIds.add(parentId);
+            }
+            childrenHere.forEach((c) => {
+              if (!renderedIds.has(c.id)) {
+                itemsToRender.push(c);
+                renderedIds.add(c.id);
+              }
+            });
 
-        return (
-          <div className="kcard-group" key={parentId}>
-            {!parentIsInCol ? (
-              <div
-                className="kcard-ghost-parent"
-                onClick={() => onSelectTask(parent.id)}
-              >
-                <span className="kcard-ghost-parent-id">{parent.id}</span>
-                <span className="kcard-ghost-parent-title">{parent.title}</span>
+            return (
+              <div className="kcard-group" key={parentId}>
+                {!parentIsInCol ? (
+                  <div
+                    className="kcard-ghost-parent"
+                    onClick={() => onSelectTask?.(parent.id)}
+                  >
+                    <span className="kcard-ghost-parent-id">{parent.id}</span>
+                    <span className="kcard-ghost-parent-title">{parent.title}</span>
+                  </div>
+                ) : null}
+                {itemsToRender.map((task) => (
+                  <BoardCard
+                    key={task.id}
+                    task={task}
+                    selected={task.id === selectedTaskId}
+                    showCritical={showCritical}
+                    breadcrumbParent={null}
+                    nested={task.parentId === parentId}
+                    hasBreach={breachTaskIds.has(task.id)}
+                    onSelect={() => onSelectTask?.(task.id)}
+                    onDragStart={onDragStartCard}
+                    onDragEnd={onDragEndCard}
+                  />
+                ))}
               </div>
-            ) : null}
-            {itemsToRender.map((task) => (
-              <BoardCard
-                key={task.id}
-                task={task}
-                selected={task.id === selectedTaskId}
-                showCritical={showCritical}
-                breadcrumbParent={null}
-                nested={task.parentId === parentId}
-                hasBreach={breachTaskIds.has(task.id)}
-                onSelect={() => onSelectTask(task.id)}
-                onDragStart={onDragStartCard}
-                onDragEnd={onDragEndCard}
-              />
-            ))}
-          </div>
-        );
-      })}
+            );
+          })}
 
-      {ownTasks
-        .filter((t) => !t.parentId && !t.isParent && !renderedIds.has(t.id))
-        .map((task) => {
-          const parent = task.parentId
-            ? allTasks.find((p) => p.id === task.parentId) ?? null
-            : null;
-          return (
-            <BoardCard
-              key={task.id}
-              task={task}
-              selected={task.id === selectedTaskId}
-              showCritical={showCritical}
-              breadcrumbParent={parent}
-              nested={false}
-              hasBreach={breachTaskIds.has(task.id)}
-              onSelect={() => onSelectTask(task.id)}
-              onDragStart={onDragStartCard}
-              onDragEnd={onDragEndCard}
-            />
-          );
-        })}
+          {ownTasks
+            .filter((t) => !t.parentId && !t.isParent && !renderedIds.has(t.id))
+            .map((task) => {
+              const parent = task.parentId
+                ? allTasks.find((p) => p.id === task.parentId) ?? null
+                : null;
+              return (
+                <BoardCard
+                  key={task.id}
+                  task={task}
+                  selected={task.id === selectedTaskId}
+                  showCritical={showCritical}
+                  breadcrumbParent={parent}
+                  nested={false}
+                  hasBreach={breachTaskIds.has(task.id)}
+                  onSelect={() => onSelectTask?.(task.id)}
+                  onDragStart={onDragStartCard}
+                  onDragEnd={onDragEndCard}
+                />
+              );
+            })}
+        </>
+      )}
     </div>
   );
 }

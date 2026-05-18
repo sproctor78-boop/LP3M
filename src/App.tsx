@@ -8,6 +8,7 @@ import { detectConstraintIssues } from './engine/constraintEngine';
 import { AppShell } from './components/AppShell/AppShell';
 import { Board } from './components/Board/Board';
 import { Timeline } from './components/Timeline/Timeline';
+import { RiskRegister } from './components/RiskRegister/RiskRegister';
 import { InspectorDrawer } from './components/InspectorDrawer/InspectorDrawer';
 import { ImpactStrip } from './components/ImpactStrip/ImpactStrip';
 import { Legend } from './components/Legend/Legend';
@@ -88,6 +89,16 @@ export function App() {
       ? state.domain.tasks.find((t) => t.id === state.view.selectedTaskId) ?? null
       : null;
 
+  const selectedRisk =
+    state.view.selectedRiskId
+      ? state.domain.risks.find((r) => r.id === state.view.selectedRiskId) ?? null
+      : null;
+
+  const selectedAction =
+    state.view.selectedActionId
+      ? state.domain.raidActions.find((a) => a.id === state.view.selectedActionId) ?? null
+      : null;
+
   return (
     <>
       <AppShell
@@ -115,6 +126,35 @@ export function App() {
                 setShowTaskModal(true);
               }}
               onCollapseBoard={() => dispatch({ type: 'setViewMode', mode: 'timeline' })}
+            />
+          ) : state.view.mode === 'riskRegister' ? (
+            <RiskRegister
+              state={state}
+              onSelectRisk={(riskId) =>
+                dispatch({ type: 'selectRisk', riskId, openDrawer: true })
+              }
+            />
+          ) : state.view.mode === 'raidBoard' ? (
+            <Board
+              state={state}
+              source="raidActions"
+              onSelectTask={(taskId) =>
+                dispatch({ type: 'selectTask', taskId, openDrawer: true })
+              }
+              onMoveTaskStatus={(taskId, status) =>
+                dispatch({ type: 'moveTaskStatus', taskId, status })
+              }
+              onRenameColumn={(key, label) => dispatch({ type: 'renameColumn', key, label })}
+              onDeleteColumn={(key) => dispatch({ type: 'deleteColumn', key })}
+              onAddColumn={() => dispatch({ type: 'addColumn' })}
+              onNewTask={() => {}}
+              onCollapseBoard={() => dispatch({ type: 'setViewMode', mode: 'timeline' })}
+              onSelectAction={(actionId) =>
+                dispatch({ type: 'selectRaidAction', actionId, openDrawer: true })
+              }
+              onMoveActionStatus={(actionId, status) =>
+                dispatch({ type: 'updateRaidAction', actionId, patch: { status } })
+              }
             />
           ) : (
             <Timeline
@@ -160,6 +200,10 @@ export function App() {
               }
               onAddSwimlane={() => dispatch({ type: 'addSwimlane' })}
               onSetMilestonesOnly={(value) => dispatch({ type: 'setMilestonesOnly', value })}
+              onSetRaidActionsVisible={(value) => dispatch({ type: 'setRaidActionsVisible', value })}
+              onSelectAction={(actionId) =>
+                dispatch({ type: 'selectRaidAction', actionId, openDrawer: true })
+              }
               showImpactStrip={!!state.pendingForecast && !state.view.drawerOpen}
               onClearScrollToTask={() => dispatch({ type: 'setScrollToTask', taskId: null })}
             />
@@ -184,7 +228,22 @@ export function App() {
       <InspectorDrawer
         state={state}
         selectedTask={selectedTask}
+        selectedRisk={selectedRisk}
+        selectedAction={selectedAction}
         onClose={() => dispatch({ type: 'closeDrawer' })}
+        onUpdateRisk={(riskId, patch) => dispatch({ type: 'updateRisk', riskId, patch })}
+        onDeleteRisk={(riskId) => {
+          dispatch({ type: 'deleteRisk', riskId });
+          showHint('Risk deleted');
+        }}
+        onApproveResidualScore={(riskId, newResidual) => {
+          dispatch({ type: 'approveResidualScore', riskId, newResidual });
+          showHint('Residual score approved');
+        }}
+        onRejectResidualScore={(riskId) => {
+          dispatch({ type: 'rejectResidualScore', riskId });
+          showHint('Score update rejected');
+        }}
         onApplyForecast={() => {
           dispatch({ type: 'applyForecast' });
           dispatch({ type: 'closeDrawer' });
@@ -243,6 +302,17 @@ export function App() {
           })
         }
         onCreatePerson={(person) => dispatch({ type: 'addPerson', person })}
+        onUpdateRaidAction={(actionId, patch) =>
+          dispatch({ type: 'updateRaidAction', actionId, patch })
+        }
+        onDeleteRaidAction={(actionId) => {
+          dispatch({ type: 'deleteRaidAction', actionId });
+          showHint('Action deleted');
+        }}
+        onCompleteRaidAction={(actionId, effectiveness) => {
+          dispatch({ type: 'completeRaidAction', actionId, effectiveness });
+          showHint('Action marked complete — risk pending approval');
+        }}
       />
 
       {showTaskModal ? (
