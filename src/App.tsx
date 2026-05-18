@@ -9,6 +9,8 @@ import { AppShell } from './components/AppShell/AppShell';
 import { Board } from './components/Board/Board';
 import { Timeline } from './components/Timeline/Timeline';
 import { RiskRegister } from './components/RiskRegister/RiskRegister';
+import { ExternalDependenciesRegister } from './components/ExternalDependenciesRegister/ExternalDependenciesRegister';
+import { ExternalDependency } from './domain/types';
 import { InspectorDrawer } from './components/InspectorDrawer/InspectorDrawer';
 import { ImpactStrip } from './components/ImpactStrip/ImpactStrip';
 import { Legend } from './components/Legend/Legend';
@@ -22,6 +24,7 @@ export function App() {
   const [taskModalParent, setTaskModalParent] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showRiskCreate, setShowRiskCreate] = useState(false);
+  const [showExtDepCreate, setShowExtDepCreate] = useState(false);
   const breachCycleRef = useRef(0);
 
   // Persist on every state change (excluding pendingForecast — handled by adapter)
@@ -45,6 +48,10 @@ export function App() {
         setShowRiskCreate(false);
         return;
       }
+      if (showExtDepCreate) {
+        setShowExtDepCreate(false);
+        return;
+      }
       if (document.body.classList.contains('drawing-dep')) {
         // The dep drag hook owns its own cancellation via blur — this is a safety net
         document.body.classList.remove('drawing-dep');
@@ -66,7 +73,7 @@ export function App() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [showSettings, showTaskModal, showRiskCreate, state.view.drawerOpen, state.view.selectedDep]);
+  }, [showSettings, showTaskModal, showRiskCreate, showExtDepCreate, state.view.drawerOpen, state.view.selectedDep]);
 
   // Initial hint
   useEffect(() => {
@@ -103,6 +110,13 @@ export function App() {
     state.view.selectedActionId
       ? state.domain.raidActions.find((a) => a.id === state.view.selectedActionId) ?? null
       : null;
+
+  const selectedExtDep: ExternalDependency | null =
+    state.view.selectedExtDepId
+      ? state.domain.externalDependencies.find((d) => d.id === state.view.selectedExtDepId) ?? null
+      : null;
+
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <>
@@ -142,6 +156,15 @@ export function App() {
               onSetCollapse={(group, collapsed) =>
                 dispatch({ type: 'setRiskColumnCollapse', group, collapsed })
               }
+            />
+          ) : state.view.mode === 'extDepRegister' ? (
+            <ExternalDependenciesRegister
+              state={state}
+              onSelectDep={(depId) =>
+                dispatch({ type: 'selectExtDep', depId, openDrawer: true })
+              }
+              onNewDep={() => setShowExtDepCreate(true)}
+              today={today}
             />
           ) : state.view.mode === 'raidBoard' ? (
             <Board
@@ -213,6 +236,10 @@ export function App() {
               onSelectAction={(actionId) =>
                 dispatch({ type: 'selectRaidAction', actionId, openDrawer: true })
               }
+              onSetExtDepVisible={(value) => dispatch({ type: 'setExtDepVisible', value })}
+              onSelectExtDep={(depId) =>
+                dispatch({ type: 'selectExtDep', depId, openDrawer: true })
+              }
               showImpactStrip={!!state.pendingForecast && !state.view.drawerOpen}
               onClearScrollToTask={() => dispatch({ type: 'setScrollToTask', taskId: null })}
             />
@@ -239,14 +266,27 @@ export function App() {
         selectedTask={selectedTask}
         selectedRisk={selectedRisk}
         selectedAction={selectedAction}
-        wide={showRiskCreate}
+        wide={showRiskCreate || showExtDepCreate}
         showRiskCreate={showRiskCreate}
+        showExtDepCreate={showExtDepCreate}
+        selectedExtDep={selectedExtDep}
+        today={today}
         onCreateRisk={(risk) => {
           dispatch({ type: 'createRisk', risk });
           showHint(`Risk ${risk.id} created`);
         }}
         onCloseRiskCreate={() => setShowRiskCreate(false)}
-        onClose={() => { dispatch({ type: 'closeDrawer' }); setShowRiskCreate(false); }}
+        onCreateExtDep={(dep) => {
+          dispatch({ type: 'addExternalDependency', dep });
+          showHint(`Dependency ${dep.id} created`);
+        }}
+        onCloseExtDepCreate={() => setShowExtDepCreate(false)}
+        onUpdateExtDep={(depId, patch) => dispatch({ type: 'updateExternalDependency', depId, patch })}
+        onRemoveExtDep={(depId) => {
+          dispatch({ type: 'removeExternalDependency', depId });
+          showHint('External dependency removed');
+        }}
+        onClose={() => { dispatch({ type: 'closeDrawer' }); setShowRiskCreate(false); setShowExtDepCreate(false); }}
         onUpdateRisk={(riskId, patch) => dispatch({ type: 'updateRisk', riskId, patch })}
         onDeleteRisk={(riskId) => {
           dispatch({ type: 'deleteRisk', riskId });

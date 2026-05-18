@@ -6,9 +6,12 @@
 
 import { Risk } from './risk';
 import { RaidAction } from './raidAction';
+import { ExternalDependency } from './externalDependency';
 export type { Risk, RiskScore, RiskScores, RiskStatus, RiskCategory, RagColour, ImpactBand, ProbabilityBand, ResponseItem, Proximity } from './risk';
 export { PROXIMITY_BANDS, getProximityFromDate } from './risk';
 export type { RaidAction, ActionStatus } from './raidAction';
+export type { ExternalDependency, DepStatus } from './externalDependency';
+export { getSuggestedStatus, isOverdue as isExtDepOverdue } from './externalDependency';
 
 export type TaskStatusKey = string; // a key into AppDomainState.columns
 export type SwimlaneKey = string; // a key into AppDomainState.swimlanes
@@ -113,7 +116,7 @@ export interface Person {
   adSyncedAt?: string;
 }
 
-export type ViewMode = 'board' | 'timeline' | 'riskRegister' | 'raidBoard';
+export type ViewMode = 'board' | 'timeline' | 'riskRegister' | 'raidBoard' | 'extDepRegister';
 export type GroupBy = 'swimlane' | 'parent' | 'status' | 'none';
 
 export interface AppDomainState {
@@ -124,6 +127,7 @@ export interface AppDomainState {
   people: Person[];
   risks: Risk[];
   raidActions: RaidAction[];
+  externalDependencies: ExternalDependency[];
 }
 
 export interface AppViewState {
@@ -154,6 +158,10 @@ export interface AppViewState {
   selectedActionId: string | null;
   /** Persisted collapse state for Risk Register Inherent/Residual column groups. */
   riskRegisterCollapseState: { inherentCollapsed: boolean; residualCollapsed: boolean };
+  /** When true, External Dependencies appear as an overlay layer on the Timeline. */
+  externalDependenciesVisibleInTimeline: boolean;
+  /** ID of the currently selected external dependency, or null. */
+  selectedExtDepId: string | null;
 }
 
 export interface TaskMovement {

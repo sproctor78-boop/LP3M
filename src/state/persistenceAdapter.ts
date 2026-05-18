@@ -10,8 +10,8 @@ import { AppState } from '../domain/types';
 import { createInitialDomainState } from '../domain/seedData';
 import { DEFAULT_TASK_LIST_WIDTH, DEFAULT_ZOOM } from '../domain/constants';
 
-const STORE_KEY = 'ripple_state_v6';
-const STORE_VERSION = 6;
+const STORE_KEY = 'ripple_state_v7';
+const STORE_VERSION = 7;
 
 interface StoredEnvelope {
   version: number;
@@ -43,6 +43,8 @@ export function createInitialAppState(): AppState {
       selectedRiskId: null,
       selectedActionId: null,
       riskRegisterCollapseState: { inherentCollapsed: true, residualCollapsed: false },
+      externalDependenciesVisibleInTimeline: false,
+      selectedExtDepId: null,
     },
     pendingForecast: null,
     pendingChange: null,
@@ -70,7 +72,7 @@ function isValidEnvelope(value: unknown): value is StoredEnvelope {
 function migrateView(view: AppState['view']): AppState['view'] {
   const raw = view as unknown as Record<string, unknown>;
   const rawMode = raw.mode;
-  const validModes = ['board', 'timeline', 'riskRegister', 'raidBoard'];
+  const validModes = ['board', 'timeline', 'riskRegister', 'raidBoard', 'extDepRegister'];
   const mode = validModes.includes(rawMode as string) ? (rawMode as AppState['view']['mode']) : 'timeline';
   const taskListWidth =
     typeof raw.taskListWidth === 'number' && raw.taskListWidth > 0
@@ -88,7 +90,25 @@ function migrateView(view: AppState['view']): AppState['view'] {
     inherentCollapsed: typeof rawCollapse?.inherentCollapsed === 'boolean' ? rawCollapse.inherentCollapsed : true,
     residualCollapsed: typeof rawCollapse?.residualCollapsed === 'boolean' ? rawCollapse.residualCollapsed : false,
   };
-  return { ...view, mode, taskListWidth, scrollToTaskId: null, milestonesOnly, raidActionsVisibleInTimeline, selectedRiskId, selectedActionId, riskRegisterCollapseState };
+  const externalDependenciesVisibleInTimeline =
+    typeof raw.externalDependenciesVisibleInTimeline === 'boolean'
+      ? raw.externalDependenciesVisibleInTimeline
+      : false;
+  const selectedExtDepId =
+    typeof raw.selectedExtDepId === 'string' ? raw.selectedExtDepId : null;
+  return {
+    ...view,
+    mode,
+    taskListWidth,
+    scrollToTaskId: null,
+    milestonesOnly,
+    raidActionsVisibleInTimeline,
+    selectedRiskId,
+    selectedActionId,
+    riskRegisterCollapseState,
+    externalDependenciesVisibleInTimeline,
+    selectedExtDepId,
+  };
 }
 
 /**
@@ -100,6 +120,7 @@ function migrateDomain(domain: AppState['domain']): AppState['domain'] {
   const people = Array.isArray(raw.people) ? raw.people : [];
   const risks = Array.isArray(raw.risks) ? raw.risks : [];
   const raidActions = Array.isArray(raw.raidActions) ? raw.raidActions : [];
+  const externalDependencies = Array.isArray(raw.externalDependencies) ? raw.externalDependencies : [];
   const migratedRisks = risks.map((r: unknown) => {
     const risk = r as Record<string, unknown>;
     if (!risk.proximity) return { ...risk, proximity: 'MediumTerm' };
@@ -110,6 +131,7 @@ function migrateDomain(domain: AppState['domain']): AppState['domain'] {
     people,
     risks: migratedRisks,
     raidActions,
+    externalDependencies: externalDependencies as AppState['domain']['externalDependencies'],
     tasks: domain.tasks.map((task) => {
       const t = task as unknown as Record<string, unknown>;
       return {

@@ -15,6 +15,7 @@ import {
 } from '../domain/types';
 import { ImpactBand, Risk, RiskScore, RiskStatus } from '../domain/risk';
 import { ActionStatus, RaidAction } from '../domain/raidAction';
+import { DepStatus, ExternalDependency } from '../domain/externalDependency';
 import {
   addDependency,
   deepCopyTasks,
@@ -88,7 +89,15 @@ export type AppAction =
   | { type: 'approveResidualScore'; riskId: string; newResidual: RiskScore }
   | { type: 'rejectResidualScore'; riskId: string }
   // Risk Register — column collapse
-  | { type: 'setRiskColumnCollapse'; group: 'inherent' | 'residual'; collapsed: boolean };
+  | { type: 'setRiskColumnCollapse'; group: 'inherent' | 'residual'; collapsed: boolean }
+  // External Dependencies — view
+  | { type: 'selectExtDep'; depId: string | null; openDrawer?: boolean }
+  | { type: 'setExtDepVisible'; value: boolean }
+  // External Dependencies — CRUD
+  | { type: 'addExternalDependency'; dep: ExternalDependency }
+  | { type: 'updateExternalDependency'; depId: string; patch: Partial<ExternalDependency> }
+  | { type: 'removeExternalDependency'; depId: string }
+  | { type: 'setExternalDependencyStatus'; depId: string; status: DepStatus };
 
 function withRecomputedTasks(state: AppState, nextTasks: WorkItem[]): AppState {
   return {
@@ -531,6 +540,58 @@ export function appReducer(state: AppState, action: AppAction): AppState {
           },
         },
       };
+    }
+
+    // ------- External Dependencies view -------
+    case 'selectExtDep':
+      return {
+        ...state,
+        view: {
+          ...state.view,
+          selectedExtDepId: action.depId,
+          selectedTaskId: null,
+          selectedRiskId: null,
+          selectedActionId: null,
+          drawerOpen: action.openDrawer ?? state.view.drawerOpen,
+        },
+      };
+    case 'setExtDepVisible':
+      return { ...state, view: { ...state.view, externalDependenciesVisibleInTimeline: action.value } };
+
+    // ------- External Dependencies CRUD -------
+    case 'addExternalDependency':
+      return {
+        ...state,
+        domain: { ...state.domain, externalDependencies: [...state.domain.externalDependencies, action.dep] },
+      };
+    case 'updateExternalDependency': {
+      const externalDependencies = state.domain.externalDependencies.map((d) =>
+        d.id === action.depId
+          ? { ...d, ...action.patch, lastReviewedAt: new Date().toISOString() }
+          : d,
+      );
+      return { ...state, domain: { ...state.domain, externalDependencies } };
+    }
+    case 'removeExternalDependency': {
+      const externalDependencies = state.domain.externalDependencies.filter((d) => d.id !== action.depId);
+      const newExtDepId = state.view.selectedExtDepId === action.depId ? null : state.view.selectedExtDepId;
+      return {
+        ...state,
+        domain: { ...state.domain, externalDependencies },
+        view: {
+          ...state.view,
+          selectedExtDepId: newExtDepId,
+          drawerOpen: newExtDepId !== null && state.view.drawerOpen,
+        },
+      };
+    }
+    case 'setExternalDependencyStatus': {
+      const externalDependencies = state.domain.externalDependencies.map((d) =>
+        d.id === action.depId
+          ? { ...d, status: action.status, lastReviewedAt: new Date().toISOString() }
+          : d,
+      );
+      return { ...state, domain: { ...state.domain, externalDependencies } };
     }
 
     default: {
