@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { seedRisks, seedRaidActions } from '../domain/raidSeedData';
+import { Proximity } from '../domain/risk';
 
 describe('seedRisks', () => {
   const risks = seedRisks();
@@ -95,6 +96,13 @@ describe('seedRisks', () => {
     risks.forEach((r) => {
       expect(r.raisedDate).toMatch(isoDateRe);
       expect(r.reviewDate).toMatch(isoDateRe);
+    });
+  });
+
+  it('all 12 risks have a valid proximity value', () => {
+    const validProximities: Proximity[] = ['Imminent', 'NearTerm', 'MediumTerm', 'LongTerm'];
+    risks.forEach((r) => {
+      expect(validProximities).toContain(r.proximity);
     });
   });
 });

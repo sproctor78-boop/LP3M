@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AppState, Risk, RiskCategory } from '../../domain/types';
+import { AppState, Proximity, Risk, RiskCategory } from '../../domain/types';
 import { downloadRaidCsv } from '../../export/raidCsvExport';
 import { showHint } from '../Toasts/Hint';
 import { RiskGrid } from './RiskGrid';
@@ -7,16 +7,26 @@ import { RiskGrid } from './RiskGrid';
 interface Props {
   state: AppState;
   onSelectRisk: (riskId: string) => void;
+  onNewRisk: () => void;
+  onSetCollapse: (group: 'inherent' | 'residual', collapsed: boolean) => void;
 }
 
 const ALL_CATEGORIES: RiskCategory[] = [
   'Technical', 'Resource', 'Schedule', 'Commercial', 'Supply Chain', 'Regulatory', 'External',
 ];
 
-export function RiskRegister({ state, onSelectRisk }: Props) {
+const ALL_PROXIMITIES: { value: Proximity; label: string }[] = [
+  { value: 'Imminent',   label: 'Imminent' },
+  { value: 'NearTerm',   label: 'Near-term' },
+  { value: 'MediumTerm', label: 'Medium-term' },
+  { value: 'LongTerm',   label: 'Long-term' },
+];
+
+export function RiskRegister({ state, onSelectRisk, onNewRisk, onSetCollapse }: Props) {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<RiskCategory | ''>('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [proximityFilter, setProximityFilter] = useState<Proximity | ''>('');
   const [pendingOnly, setPendingOnly] = useState(false);
 
   const risks = state.domain.risks;
@@ -26,6 +36,7 @@ export function RiskRegister({ state, onSelectRisk }: Props) {
     if (pendingOnly && r.status !== 'PendingApproval') return false;
     if (statusFilter && r.status !== statusFilter) return false;
     if (categoryFilter && r.category !== categoryFilter) return false;
+    if (proximityFilter && r.proximity !== proximityFilter) return false;
     if (search) {
       const q = search.toLowerCase();
       if (!r.id.toLowerCase().includes(q) && !r.title.toLowerCase().includes(q)) return false;
@@ -81,6 +92,18 @@ export function RiskRegister({ state, onSelectRisk }: Props) {
             <option value="PendingApproval">Pending approval</option>
           </select>
 
+          <select
+            value={proximityFilter}
+            onChange={(e) => setProximityFilter(e.target.value as Proximity | '')}
+            aria-label="Filter by proximity"
+            className="risk-register-filter-select"
+          >
+            <option value="">All proximity</option>
+            {ALL_PROXIMITIES.map((p) => (
+              <option key={p.value} value={p.value}>{p.label}</option>
+            ))}
+          </select>
+
           {pendingCount > 0 ? (
             <button
               type="button"
@@ -94,6 +117,14 @@ export function RiskRegister({ state, onSelectRisk }: Props) {
         </div>
 
         <div className="board-header-actions">
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={onNewRisk}
+            title="Create a new risk"
+          >
+            + New Risk
+          </button>
           <button
             type="button"
             className="btn"
@@ -112,6 +143,8 @@ export function RiskRegister({ state, onSelectRisk }: Props) {
         risks={filtered}
         selectedRiskId={state.view.selectedRiskId}
         onSelectRisk={onSelectRisk}
+        collapseState={state.view.riskRegisterCollapseState}
+        onSetCollapse={onSetCollapse}
       />
     </section>
   );

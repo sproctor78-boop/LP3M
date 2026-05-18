@@ -86,7 +86,9 @@ export type AppAction =
   // RAID — PendingApproval flow
   | { type: 'completeRaidAction'; actionId: string; effectiveness: ImpactBand }
   | { type: 'approveResidualScore'; riskId: string; newResidual: RiskScore }
-  | { type: 'rejectResidualScore'; riskId: string };
+  | { type: 'rejectResidualScore'; riskId: string }
+  // Risk Register — column collapse
+  | { type: 'setRiskColumnCollapse'; group: 'inherent' | 'residual'; collapsed: boolean };
 
 function withRecomputedTasks(state: AppState, nextTasks: WorkItem[]): AppState {
   return {
@@ -515,6 +517,20 @@ export function appReducer(state: AppState, action: AppAction): AppState {
           : r,
       );
       return { ...state, domain: { ...state.domain, risks } };
+    }
+
+    case 'setRiskColumnCollapse': {
+      const current = state.view.riskRegisterCollapseState;
+      return {
+        ...state,
+        view: {
+          ...state.view,
+          riskRegisterCollapseState: {
+            ...current,
+            [action.group === 'inherent' ? 'inherentCollapsed' : 'residualCollapsed']: action.collapsed,
+          },
+        },
+      };
     }
 
     default: {

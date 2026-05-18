@@ -2,6 +2,7 @@ import { AppState, ImpactBand, Person, RaidAction, Risk, RiskScore, WorkItem } f
 import { TaskInspector } from './TaskInspector';
 import { ImpactPanel } from './ImpactPanel';
 import { RiskInspector } from '../RiskRegister/RiskInspector';
+import { RiskCreateForm } from '../RiskRegister/RiskCreateForm';
 import { RaidActionInspector } from './RaidActionInspector';
 
 interface Props {
@@ -31,6 +32,11 @@ interface Props {
   onUpdateRaidAction: (actionId: string, patch: Partial<RaidAction>) => void;
   onDeleteRaidAction: (actionId: string) => void;
   onCompleteRaidAction: (actionId: string, effectiveness: ImpactBand) => void;
+  // Risk creation
+  wide?: boolean;
+  showRiskCreate?: boolean;
+  onCreateRisk?: (risk: Risk) => void;
+  onCloseRiskCreate?: () => void;
 }
 
 export function InspectorDrawer({
@@ -60,12 +66,19 @@ export function InspectorDrawer({
   onUpdateRaidAction,
   onDeleteRaidAction,
   onCompleteRaidAction,
+  wide,
+  showRiskCreate,
+  onCreateRisk,
+  onCloseRiskCreate,
 }: Props) {
   const fc = state.pendingForecast;
   let kicker = 'Inspector';
   let title = 'Select an item';
 
-  if (fc) {
+  if (showRiskCreate) {
+    kicker = 'New Risk';
+    title = 'Create risk';
+  } else if (fc) {
     kicker = 'Schedule impact';
     title = state.domain.tasks.find((t) => t.id === fc.changedTaskId)?.title ?? 'Forecast';
   } else if (selectedTask) {
@@ -80,7 +93,14 @@ export function InspectorDrawer({
   }
 
   let body: JSX.Element;
-  if (fc) {
+  if (showRiskCreate && onCreateRisk && onCloseRiskCreate) {
+    body = (
+      <RiskCreateForm
+        onSave={onCreateRisk}
+        onClose={onCloseRiskCreate}
+      />
+    );
+  } else if (fc) {
     body = (
       <ImpactPanel
         forecastResult={fc}
@@ -150,8 +170,10 @@ export function InspectorDrawer({
     );
   }
 
+  const drawerOpen = state.view.drawerOpen || !!showRiskCreate;
+
   return (
-    <aside className={`drawer ${state.view.drawerOpen ? 'open' : ''}`}>
+    <aside className={`drawer${drawerOpen ? ' open' : ''}${wide ? ' wide' : ''}`}>
       <div className="drawer-header">
         <button
           type="button"
