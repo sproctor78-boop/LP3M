@@ -1,242 +1,225 @@
 # RAID Integration Plan — Ripple
 
-> Phase 0 plan. For Steven's review before any implementation code is written.
+> Phase 0 plan. **For Steven's review — do not begin Phase 1 until sign-off.**
 > Branch: `claude/integrate-raid-log-ripple-2UgGP`
+> Scoring proposals and seed data: see `docs/raid-integration-notes.md`.
 
 ---
 
-## Summary
+## 1. Confirmed constraints
 
-RAID (Risks and Actions only in this pass) is integrated into Ripple as a
-first-class feature distributed across the existing layer structure — domain,
-state, components, export — rather than as a sub-app. No new top-level folders.
-No new frameworks.
+| Constraint | Status |
+|---|---|
+| No Tailwind | Confirmed — existing `src/styles/` conventions only |
+| No Zustand | Confirmed — extend `appState.ts` |
+| No TanStack Table | Confirmed — custom `RiskGrid.tsx` using CSS grid |
+| No top-level `raid/` folder | Confirmed — distribute by layer |
+| No `src/engine/` changes | Confirmed — TODO comment only |
+| No router | Confirmed — Ripple has none; view switching via `ViewMode` in state |
+| No new UUID library | Confirmed — `crypto.randomUUID()` |
 
 ---
 
-## 1. New files and where they live
+## 2. New files
 
 ### `src/domain/`
-| File | Purpose |
-|---|---|
-| `risk.ts` | `Risk`, `RiskScore`, `RiskScores`, `RiskCategory`, `RiskStatus`, `Control`, `Mitigation` types |
-| `raidAction.ts` | `RaidAction`, `ActionStatus` types |
-| `raidScoring.ts` | Pure helpers: probability→band, score calculation, RAG colour, proposed-residual computation |
-| `raidSeedData.ts` | Seed risks + actions (ported from P3M Governance MVP) |
 
-### `src/state/`
-No new files; `appState.ts` and `persistenceAdapter.ts` are extended in place.
+| File | Contents |
+|---|---|
+| `risk.ts` | `Risk`, `RiskScore`, `RiskScores`, `RiskStatus`, `RiskCategory`, `RagColour`, `ImpactBand`, `ProbabilityBand`, `ResponseItem` types |
+| `raidAction.ts` | `RaidAction`, `ActionStatus` types |
+| `raidScoring.ts` | Pure helpers: `probabilityToBand`, `ragForScore`, `calcRiskScore`, `proposeResidualScore`; all unit-testable with no imports beyond `risk.ts` |
+| `raidSeedData.ts` | `seedRisks()` and `seedRaidActions()` — the 12 risks and 19 actions from `raid-integration-notes.md` §6 |
 
 ### `src/components/RiskRegister/`
-| File | Purpose |
-|---|---|
-| `RiskRegister.tsx` | Outer container, toolbar (search, filter, CSV export button) |
-| `RiskGrid.tsx` | Spreadsheet-feel table: frozen header, sortable columns, inline cell edit, keyboard nav |
-| `RiskRow.tsx` | A single row; clicking opens risk in InspectorDrawer |
-| `RiskScoreBadge.tsx` | RAG pill/badge showing score and colour |
-| `RiskInspector.tsx` | Content rendered inside the existing InspectorDrawer when a risk is selected |
 
-### `src/export/`
-| File | Purpose |
+| File | Contents |
 |---|---|
-| `raidCsvExport.ts` | Builds and downloads the risk CSV |
+| `RiskRegister.tsx` | Outer container: toolbar (search input, category filter, status filter, "Needs approval" chip, CSV export button), renders `RiskGrid` |
+| `RiskGrid.tsx` | Spreadsheet table: `position: sticky` frozen header, sortable column headers, keyboard nav (arrow keys, Enter to open drawer), row click selects risk |
+| `RiskRow.tsx` | Single grid row; renders `RiskScoreBadge` cells |
+| `RiskScoreBadge.tsx` | RAG-coloured score pill for inherent / residual / target columns |
+| `RiskInspector.tsx` | Detail panel rendered inside `InspectorDrawer` when a risk is selected; editable fields, controls/mitigations list, actions list, approve/reject buttons for `PendingApproval` risks |
 
 ### `src/components/Board/`
-No new files. `Board.tsx`, `BoardColumn.tsx`, `BoardCard.tsx` are refactored
-to accept a `source` prop (see section 4).
+
+No new files at the `Board/` level. `BoardColumn` gets a render-prop so `RaidActionCard` (new file, same folder) can be slotted in.
+
+| File | Contents |
+|---|---|
+| `RaidActionCard.tsx` | Card for a `RaidAction` item on the RAID Actions Board; shows title, owner, due date, risk ID, status badge |
+
+### `src/export/`
+
+| File | Contents |
+|---|---|
+| `raidCsvExport.ts` | `buildRaidCsv(risks, actions): string` and `downloadRaidCsv(...)` — flat CSV matching the column list in `raid-integration-notes.md` §5 |
 
 ---
 
-## 2. Files modified
+## 3. Modified files
 
 | File | Change |
 |---|---|
-| `src/domain/types.ts` | Add `ViewMode` values `'riskRegister'` and `'raidBoard'`; extend `AppViewState` with `raidActionsVisibleInTimeline: boolean`, `selectedRiskId: string \| null` |
-| `src/state/appState.ts` | Add RAID slices to `AppDomainState`; new action types for risk/action CRUD and `PendingApproval` flow; new selectors |
-| `src/state/persistenceAdapter.ts` | Bump store version to `v4`; persist `raid` domain slice; `migrateDomain` fills defaults |
-| `src/components/AppShell/AppShell.tsx` | Extend `VIEW_MODES` to include Risk Register and RAID Actions Board entries (3 open questions — see section 6) |
-| `src/components/Board/Board.tsx` | Accept `source: 'projectTasks' \| 'raidActions'` prop; read items via selector |
-| `src/components/Board/BoardColumn.tsx` | Accept generic item type; delegate card rendering to a render-prop or typed sub-component |
-| `src/components/Board/BoardCard.tsx` | Either generic-ified or kept task-specific with a new `RaidActionCard.tsx` sibling (see section 6 Q3) |
-| `src/components/InspectorDrawer/InspectorDrawer.tsx` | Add a `selectedRisk` branch that renders `RiskInspector` |
-| `src/components/Timeline/Timeline.tsx` | Add RAID Actions overlay layer (conditional on `raidActionsVisibleInTimeline`); add toggle control |
-| `src/App.tsx` | Wire new view modes, risk/action dispatch handlers, and drawer branch |
-| `src/domain/seedData.ts` | Re-export via `createInitialDomainState` — extend to call `raidSeedData` |
+| `src/domain/types.ts` | `ViewMode` extended: `'riskRegister' \| 'raidBoard'`; `AppViewState` gains `raidActionsVisibleInTimeline: boolean` and `selectedRiskId: string \| null` |
+| `src/state/appState.ts` | `AppDomainState` gains `risks: Risk[]` and `raidActions: RaidAction[]`; new `AppAction` variants (§4); RAID case blocks in `appReducer` |
+| `src/state/persistenceAdapter.ts` | Store key bumped to `ripple_state_v4`; `PersistedState` includes `raid` slice; `migrateDomain` fills missing fields with defaults; `migrateView` fills `raidActionsVisibleInTimeline: false`, `selectedRiskId: null` |
+| `src/components/AppShell/AppShell.tsx` | `VIEW_MODES` extended with two new entries (see §6 Q1); new props for RAID-related handlers |
+| `src/components/Board/Board.tsx` | `source: 'projectTasks' \| 'raidActions'` prop; column/item data via internal selector; title/meta lines driven by source |
+| `src/components/Board/BoardColumn.tsx` | `renderCard: (item, selected) => ReactNode` render-prop added; existing callers pass a closure that renders `BoardCard` as before |
+| `src/components/InspectorDrawer/InspectorDrawer.tsx` | New `selectedRisk` prop + `RiskInspector` branch alongside existing task and forecast branches |
+| `src/components/Timeline/Timeline.tsx` | RAID Actions overlay layer (conditional on flag); RAID toggle chip in toolbar; TODO comment in render path |
+| `src/App.tsx` | New view-mode cases; risk/action dispatch handlers; drawer branch for risks; RAID Actions toggle wired |
+| `src/domain/seedData.ts` | `createInitialDomainState` calls `seedRisks()` and `seedRaidActions()` |
 
 ---
 
-## 3. State shape changes
-
-### Domain additions (inside `AppDomainState`)
+## 4. New `AppAction` variants
 
 ```typescript
-interface AppDomainState {
-  // existing…
-  risks: Risk[];
-  raidActions: RaidAction[];
-}
-```
-
-### View additions (inside `AppViewState`)
-
-```typescript
-interface AppViewState {
-  // existing…
-  mode: ViewMode;  // extended to include 'riskRegister' | 'raidBoard'
-  raidActionsVisibleInTimeline: boolean;  // default false
-  selectedRiskId: string | null;
-}
-```
-
-### New action types in `AppAction`
-
-```
-// RAID view
-| { type: 'setRaidActionsVisible'; value: boolean }
+// View
 | { type: 'selectRisk'; riskId: string | null; openDrawer?: boolean }
+| { type: 'setRaidActionsVisible'; value: boolean }
 
 // Risk CRUD
 | { type: 'createRisk'; risk: Risk }
 | { type: 'updateRisk'; riskId: string; patch: Partial<Risk> }
 | { type: 'deleteRisk'; riskId: string }
 
-// Action CRUD + complete flow
+// RaidAction CRUD
 | { type: 'createRaidAction'; action: RaidAction }
 | { type: 'updateRaidAction'; actionId: string; patch: Partial<RaidAction> }
 | { type: 'deleteRaidAction'; actionId: string }
-| { type: 'completeRaidAction'; actionId: string; effectiveness: 1|2|3|4|5 }
-  // ↑ sets action.status = 'Done', proposes new residual on parent risk,
-  //   sets risk.status = 'PendingApproval'
+
+// PendingApproval flow
+| { type: 'completeRaidAction'; actionId: string; effectiveness: ImpactBand }
 | { type: 'approveResidualScore'; riskId: string }
 | { type: 'rejectResidualScore'; riskId: string }
 ```
 
 ---
 
-## 4. Board parameterisation strategy
+## 5. Board parameterisation
 
-The existing `Board` component is tightly coupled to `WorkItem` but it's
-mechanically clean enough to parameterise. The plan:
+`BoardColumn` gains a `renderCard` render-prop:
 
-1. `Board.tsx` gains a `source: 'projectTasks' | 'raidActions'` prop.
-2. Columns and cards are selected via a helper that returns the right data
-   based on `source`.
-3. For `'projectTasks'`: existing `WorkItem` columns/tasks, unchanged behaviour.
-4. For `'raidActions'`: `ActionStatus` buckets (`Todo`, `InProgress`, `Done`,
-   `Overdue`) as columns; `RaidAction` items as cards.
+```typescript
+renderCard: (item: WorkItem | RaidAction, selected: boolean) => ReactNode
+```
 
-`BoardCard.tsx` shape diverges enough (risk actions have `dueDate` and `riskId`;
-project tasks have `startDate`/`endDate`/`isMilestone`) that the cleanest
-approach is a **render-prop on `BoardColumn`**: it receives an item and returns
-a JSX node. `BoardCard` stays as-is for project tasks; a new `RaidActionCard`
-is added for RAID actions. `BoardColumn` itself (drag/drop, header, count) is
-fully reused. **Question Q3 below asks Steven to confirm this direction.**
+`Board.tsx` passes:
+- For `source='projectTasks'`: a closure that renders `<BoardCard task={item} ... />`
+- For `source='raidActions'`: a closure that renders `<RaidActionCard action={item} ... />`
 
----
+`BoardCard.tsx` and `BoardColumn.tsx` **behaviour is unchanged** for the project
+task configuration. The existing test suite covers the task-board path before
+the refactor touches anything.
 
-## 5. Timeline RAID Actions layer
-
-- When `raidActionsVisibleInTimeline` is `true`, RAID actions are rendered as
-  an additional set of rows **below** the project task rows, in a visually
-  distinct group (separate swimlane-style band labelled "RAID Actions").
-- Each action renders as a point marker (diamond or flag) at its `dueDate`, or
-  as a short bar if a `startDate` is also present. Visual distinction: use
-  `--risk` / `--risk-soft` tokens from `tokens.css` (amber family) so they
-  are clearly differentiated from project task bars.
-- Toggle: a chip button in the Timeline toolbar (same style as
-  `milestones-only-chip`) labelled "RAID Actions".
-- RAID actions do **not** feed the forecast engine in this pass. A `// TODO`
-  comment is left in `src/engine/forecastEngine.ts` marking where RAID action
-  due-date pressure would be registered.
+The RAID Actions Board column set is fixed (`Todo`, `In Progress`, `Done`,
+`Overdue`) rather than user-editable — RAID action statuses are not
+programme-defined the way board columns are. The column-add/rename/delete
+controls are hidden when `source='raidActions'`.
 
 ---
 
-## 6. Open questions for Steven (required before Phase 1)
+## 6. Open questions — decisions needed from Steven
 
-These must be answered before implementation begins.
+### Q1 — Navigation structure (required before any AppShell changes)
 
-**Q1 — Navigation structure**
-Should Risk Register and RAID Actions Board appear as:
+Three options for surfacing Risk Register and RAID Actions Board:
 
-- **Option A:** Separate entries in the header `view-switch` alongside Timeline
-  and Board (simple; keeps one flat nav bar, but with 4 items it's busier)
-- **Option B:** A "RAID" grouping in the header that expands to show
-  Register / Actions Board sub-views (cleaner at scale, slightly more complex
-  to build)
-- **Option C:** Risk Register and RAID Actions Board each get their own
-  `view-switch` entry, but the header is restructured (e.g. two rows or a
-  dropdown) to keep it uncluttered
+**Option A — Flat (4-item view-switch, recommended)**
+Extend the existing header `view-switch` to `Timeline | Board | Risk Register | RAID Actions`.
+Simple, no new navigation hierarchy, keeps one code path for view switching.
 
-*Recommendation:* Option A to start — 4 items is still readable and avoids
-introducing a navigation hierarchy for now.
+**Option B — RAID group**
+A "RAID ▾" button in the header opens a sub-menu with Register and Actions Board.
+Cleaner at scale; slightly more complex to build; introduces a nav hierarchy.
 
-**Q2 — RAID Actions visual distinction in the Timeline**
-Which of these:
+**Option C — Restructured header**
+The header grows a second row or a dropdown to avoid crowding.
 
-- **Option A:** Amber/gold bars using existing `--risk` / `--risk-soft` tokens,
-  rendered in a dedicated "RAID Actions" swimlane band below all project lanes
-- **Option B:** Same lanes as project tasks, but a different bar shape (e.g.
-  flag icon at due-date rather than a full bar)
-- **Option C:** Separate swimlane band (as A) with a flag-at-due-date marker
-  (as B) — the band makes them groupable; the marker makes them clearly not tasks
+*My recommendation: Option A. The header comfortably fits 4 items and avoids
+adding a navigation model for the first increment. Revisit at v1.1 if more
+RAID sub-views arrive.*
 
-*Recommendation:* Option C. The swimlane band keeps RAID actions spatially
-separate and the flag marker makes clear these are point-in-time governance
-events, not schedule tasks.
+---
 
-**Q3 — Board parameterisation: shared card or separate card component?**
-The `WorkItem` and `RaidAction` shapes differ enough (dates, IDs, metadata)
-that a single `BoardCard` can't render both without conditional logic that
-would grow over time.
+### Q2 — RAID Actions visual distinction in the Timeline (required before Phase 4)
 
-- **Option A:** Refactor `BoardCard` to accept a generic union type and branch
-  internally — simpler now, but adds coupling between task and RAID concepts
-- **Option B:** Keep `BoardCard.tsx` for tasks; add `RaidActionCard.tsx` for
-  RAID actions; `BoardColumn.tsx` accepts a render-prop to decide which to use
-  — cleaner separation, slightly more boilerplate, future-proof
+**Option A — Amber bars, dedicated swimlane band**
+RAID actions render as amber-coloured bars (using `--risk` / `--risk-soft`
+tokens) in a labelled "RAID Actions" band below all project swimlanes.
 
-*Recommendation:* Option B. The render-prop lets both board flavours reuse all
-the drag/drop and column mechanics while keeping card rendering independent.
-**If you agree, I'll proceed with Option B without further confirmation.**
-**If you disagree, stop me before Phase 3.**
+**Option B — Flag/diamond point markers, mixed into existing swimlanes**
+Point events at `dueDate` only; no bar. Drawn in the same lane as the task
+they relate to (if any), or in a shared "RAID" lane.
 
-**Q4 — `PendingApproval` visual treatment**
-Should risks in `PendingApproval` status:
+**Option C — Dedicated band + flag marker (recommended)**
+A "RAID Actions" swimlane band below project lanes. Within it, each action
+renders as a short fixed-width flag bar (not a span bar) anchored at `dueDate`.
+Amber/gold colour. A small "RAID" label distinguishes them from project bars.
 
-- **Option A:** Show a prominent amber highlight row in the Risk Register, with
-  a dedicated "Needs approval" filter chip above the grid
-- **Option B:** Show only the `PendingApproval` badge in the status column;
-  no special filter (user can sort/filter the grid column)
-- **Option C:** Both A and B — highlighted row AND a filter chip
+Rationale: the band makes them spatially separate (can't be confused with
+schedule tasks); the flag shape makes clear they are point-in-time governance
+events, not duration-based tasks.
 
-*Recommendation:* Option A. The approval flow is a governance gate and should
-be hard to miss.
+---
+
+### Q3 — Board card: shared component vs render-prop (confirm)
+
+**Option A — Single `BoardCard` with conditional logic**
+
+**Option B — Render-prop, separate `RaidActionCard` (recommended)**
+
+The plan above already describes Option B. Both `BoardCard` and `RaidActionCard`
+slot into `BoardColumn` via the `renderCard` render-prop. No coupling between
+the task and RAID domain models inside the card.
+
+*If you prefer Option A, flag it; the change is small. If no instruction,
+I will proceed with Option B.*
+
+---
+
+### Q4 — `PendingApproval` visual treatment (required before Phase 2)
+
+**Option A — Amber row highlight + "Needs approval" filter chip (recommended)**
+A persistent amber left-border on any row where `status === 'PendingApproval'`.
+A chip above the grid labelled "Needs approval (N)" that filters to those rows.
+Makes the approval queue hard to miss.
+
+**Option B — Status badge only**
+The `PendingApproval` status appears in the Status column; no special row
+styling; user sorts/filters manually.
+
+**Option C — Both A and B**
+Same as A.
 
 ---
 
 ## 7. Phased commit plan
 
-| Phase | Commits |
-|---|---|
-| Phase 1 | Domain types + scoring helpers + state slice + persistence |
-| Phase 2 | Risk Register UI + RiskInspector + CSV export |
-| Phase 3 | Board parameterisation + RaidActionCard + tests for both configs |
-| Phase 4 | Timeline RAID layer + toggle control |
-| Phase 5 | Seed data |
-| Phase 6 | Tests + README updates |
+Each phase ends with a green build and is committed independently.
 
-Each phase commits a green build. No WIP commits.
+| Phase | Deliverables |
+|---|---|
+| **1 — Domain + state** | `risk.ts`, `raidAction.ts`, `raidScoring.ts`; state slice in `appState.ts`; persistence in `persistenceAdapter.ts`; unit tests for scoring/banding |
+| **2 — Risk Register UI** | `RiskRegister/` folder (5 files); `RiskInspector`; CSV export; `InspectorDrawer` extended; nav entry |
+| **3 — Board parameterisation** | `BoardColumn` render-prop; `RaidActionCard`; `Board` `source` prop; tests for both board configurations; nav entry |
+| **4 — Timeline layer** | RAID Actions overlay; toggle chip in Timeline toolbar; TODO comment in `forecastEngine.ts` |
+| **5 — Seed data** | `raidSeedData.ts`; `createInitialDomainState` extended; persistence version bump |
+| **6 — Tests + docs** | Full unit test coverage for domain logic; integration tests for both board configs; README updated |
 
 ---
 
-## 8. Dependencies / no-new-frameworks confirmation
+## 8. No-new-dependencies confirmation
 
-| Need | Solution | New dependency? |
+| Need | Approach | New dep? |
 |---|---|---|
-| Spreadsheet-feel table | Custom `RiskGrid.tsx` using CSS grid + `position: sticky` header row | No |
-| Sorting | In-memory array sort in `RiskGrid` | No |
-| UUID generation | `crypto.randomUUID()` (browser native, TS 4.7+) | No |
-| CSV export | Manual string building in `raidCsvExport.ts` | No |
-| Date arithmetic | Reuse existing `src/engine/dateUtils.ts` | No |
+| Grid / table | CSS grid + `position: sticky`, custom `RiskGrid.tsx` | No |
+| Sorting | In-memory `.sort()` in `RiskGrid` state | No |
+| UUID | `crypto.randomUUID()` (browser native, TS 4.7+) | No |
+| CSV export | Manual string building, Blob download (same pattern as JSON export) | No |
+| Date display | Reuse `formatShort` / `formatNice` from `src/engine/dateUtils.ts` | No |
 
-No Tailwind, no Zustand, no TanStack Table, no router introduced.
+No Tailwind, no Zustand, no TanStack Table, no router.
