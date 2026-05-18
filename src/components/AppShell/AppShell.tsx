@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { AppState, ViewMode } from '../../domain/types';
+import { getDeliverablesReadyForAcceptance } from '../../domain/deliverable';
 import { downloadJsonExport } from '../../export/jsonExport';
 import { StatusPill } from '../StatusPill/StatusPill';
 import { showHint } from '../Toasts/Hint';
@@ -13,12 +14,13 @@ interface Props {
   onOpenSettings: () => void;
 }
 
-const VIEW_MODES: { key: ViewMode; label: string }[] = [
+const BASE_VIEW_MODES: { key: ViewMode; label: string }[] = [
   { key: 'timeline', label: 'Timeline' },
   { key: 'board', label: 'Board' },
   { key: 'riskRegister', label: 'Risk Register' },
   { key: 'raidBoard', label: 'RAID Actions' },
   { key: 'extDepRegister', label: 'External Dependencies' },
+  { key: 'deliverableRegister', label: 'Deliverables' },
 ];
 
 export function AppShell({
@@ -34,6 +36,15 @@ export function AppShell({
     showHint('Exported JSON');
   };
 
+  const readyCount = getDeliverablesReadyForAcceptance(state.domain.deliverables).length;
+
+  const viewModeLabel = (key: ViewMode, baseLabel: string): string => {
+    if (key === 'deliverableRegister' && readyCount > 0) {
+      return `${baseLabel} (${readyCount} ready)`;
+    }
+    return baseLabel;
+  };
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -46,7 +57,7 @@ export function AppShell({
 
         <div className="header-centre">
           <div className="view-switch" role="tablist" aria-label="View mode">
-            {VIEW_MODES.map((mode) => (
+            {BASE_VIEW_MODES.map((mode) => (
               <button
                 key={mode.key}
                 type="button"
@@ -55,7 +66,7 @@ export function AppShell({
                 className={state.view.mode === mode.key ? 'active' : ''}
                 onClick={() => onViewMode(mode.key)}
               >
-                {mode.label}
+                {viewModeLabel(mode.key, mode.label)}
               </button>
             ))}
           </div>

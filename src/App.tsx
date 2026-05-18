@@ -10,7 +10,8 @@ import { Board } from './components/Board/Board';
 import { Timeline } from './components/Timeline/Timeline';
 import { RiskRegister } from './components/RiskRegister/RiskRegister';
 import { ExternalDependenciesRegister } from './components/ExternalDependenciesRegister/ExternalDependenciesRegister';
-import { ExternalDependency } from './domain/types';
+import { DeliverablesRegister } from './components/DeliverablesRegister/DeliverablesRegister';
+import { Deliverable, ExternalDependency } from './domain/types';
 import { InspectorDrawer } from './components/InspectorDrawer/InspectorDrawer';
 import { ImpactStrip } from './components/ImpactStrip/ImpactStrip';
 import { Legend } from './components/Legend/Legend';
@@ -25,6 +26,7 @@ export function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showRiskCreate, setShowRiskCreate] = useState(false);
   const [showExtDepCreate, setShowExtDepCreate] = useState(false);
+  const [showDeliverableCreate, setShowDeliverableCreate] = useState(false);
   const breachCycleRef = useRef(0);
 
   // Persist on every state change (excluding pendingForecast — handled by adapter)
@@ -52,6 +54,10 @@ export function App() {
         setShowExtDepCreate(false);
         return;
       }
+      if (showDeliverableCreate) {
+        setShowDeliverableCreate(false);
+        return;
+      }
       if (document.body.classList.contains('drawing-dep')) {
         // The dep drag hook owns its own cancellation via blur — this is a safety net
         document.body.classList.remove('drawing-dep');
@@ -73,7 +79,7 @@ export function App() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [showSettings, showTaskModal, showRiskCreate, showExtDepCreate, state.view.drawerOpen, state.view.selectedDep]);
+  }, [showSettings, showTaskModal, showRiskCreate, showExtDepCreate, showDeliverableCreate, state.view.drawerOpen, state.view.selectedDep]);
 
   // Initial hint
   useEffect(() => {
@@ -114,6 +120,11 @@ export function App() {
   const selectedExtDep: ExternalDependency | null =
     state.view.selectedExtDepId
       ? state.domain.externalDependencies.find((d) => d.id === state.view.selectedExtDepId) ?? null
+      : null;
+
+  const selectedDeliverable: Deliverable | null =
+    state.view.selectedDeliverableId
+      ? state.domain.deliverables.find((d) => d.id === state.view.selectedDeliverableId) ?? null
       : null;
 
   const today = new Date().toISOString().slice(0, 10);
@@ -165,6 +176,15 @@ export function App() {
               }
               onNewDep={() => setShowExtDepCreate(true)}
               today={today}
+            />
+          ) : state.view.mode === 'deliverableRegister' ? (
+            <DeliverablesRegister
+              state={state}
+              today={today}
+              onSelectDeliverable={(deliverableId) =>
+                dispatch({ type: 'selectDeliverable', deliverableId, openDrawer: true })
+              }
+              onNewDeliverable={() => setShowDeliverableCreate(true)}
             />
           ) : state.view.mode === 'raidBoard' ? (
             <Board
@@ -240,6 +260,10 @@ export function App() {
               onSelectExtDep={(depId) =>
                 dispatch({ type: 'selectExtDep', depId, openDrawer: true })
               }
+              onSetDeliverablesVisible={(value) => dispatch({ type: 'setDeliverablesVisible', value })}
+              onSelectDeliverable={(deliverableId) =>
+                dispatch({ type: 'selectDeliverable', deliverableId, openDrawer: true })
+              }
               showImpactStrip={!!state.pendingForecast && !state.view.drawerOpen}
               onClearScrollToTask={() => dispatch({ type: 'setScrollToTask', taskId: null })}
             />
@@ -266,10 +290,12 @@ export function App() {
         selectedTask={selectedTask}
         selectedRisk={selectedRisk}
         selectedAction={selectedAction}
-        wide={showRiskCreate || showExtDepCreate}
+        wide={showRiskCreate || showExtDepCreate || showDeliverableCreate}
         showRiskCreate={showRiskCreate}
         showExtDepCreate={showExtDepCreate}
         selectedExtDep={selectedExtDep}
+        showDeliverableCreate={showDeliverableCreate}
+        selectedDeliverable={selectedDeliverable}
         today={today}
         onCreateRisk={(risk) => {
           dispatch({ type: 'createRisk', risk });
@@ -286,7 +312,40 @@ export function App() {
           dispatch({ type: 'removeExternalDependency', depId });
           showHint('External dependency removed');
         }}
-        onClose={() => { dispatch({ type: 'closeDrawer' }); setShowRiskCreate(false); setShowExtDepCreate(false); }}
+        onCreateDeliverable={(deliverable) => {
+          dispatch({ type: 'addDeliverable', deliverable });
+          showHint(`Deliverable ${deliverable.id} created`);
+        }}
+        onCloseDeliverableCreate={() => setShowDeliverableCreate(false)}
+        onUpdateDeliverable={(deliverableId, patch) =>
+          dispatch({ type: 'updateDeliverable', deliverableId, patch })
+        }
+        onSetDeliverableStatus={(deliverableId, status, acceptedBy, rejectionReason) =>
+          dispatch({ type: 'setDeliverableStatus', deliverableId, status, acceptedBy, rejectionReason })
+        }
+        onRemoveDeliverable={(deliverableId) => {
+          dispatch({ type: 'removeDeliverable', deliverableId });
+          showHint('Deliverable removed');
+        }}
+        onAddCriterion={(deliverableId, criterion) =>
+          dispatch({ type: 'addAcceptanceCriterion', deliverableId, criterion })
+        }
+        onUpdateCriterion={(deliverableId, criterionId, patch) =>
+          dispatch({ type: 'updateAcceptanceCriterion', deliverableId, criterionId, patch })
+        }
+        onRemoveCriterion={(deliverableId, criterionId) =>
+          dispatch({ type: 'removeAcceptanceCriterion', deliverableId, criterionId })
+        }
+        onReorderCriteria={(deliverableId, orderedIds) =>
+          dispatch({ type: 'reorderAcceptanceCriteria', deliverableId, orderedIds })
+        }
+        onMarkCriterionMet={(deliverableId, criterionId) =>
+          dispatch({ type: 'markCriterionMet', deliverableId, criterionId })
+        }
+        onMarkCriterionUnmet={(deliverableId, criterionId) =>
+          dispatch({ type: 'markCriterionUnmet', deliverableId, criterionId })
+        }
+        onClose={() => { dispatch({ type: 'closeDrawer' }); setShowRiskCreate(false); setShowExtDepCreate(false); setShowDeliverableCreate(false); }}
         onUpdateRisk={(riskId, patch) => dispatch({ type: 'updateRisk', riskId, patch })}
         onDeleteRisk={(riskId) => {
           dispatch({ type: 'deleteRisk', riskId });

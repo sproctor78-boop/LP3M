@@ -29,6 +29,7 @@ import {
 } from './layoutEngine';
 import { RaidActionsOverlay, RAID_BAND_HEIGHT } from './RaidActionsOverlay';
 import { ExternalDependenciesOverlay, EXT_DEP_BAND_HEIGHT } from './ExternalDependenciesOverlay';
+import { DeliverablesOverlay, DELIVERABLES_BAND_HEIGHT } from './DeliverablesOverlay';
 import { formatNice } from '../../engine/dateUtils';
 import { showHint } from '../Toasts/Hint';
 
@@ -57,6 +58,8 @@ interface Props {
   onSelectAction: (actionId: string) => void;
   onSetExtDepVisible: (value: boolean) => void;
   onSelectExtDep: (depId: string) => void;
+  onSetDeliverablesVisible: (value: boolean) => void;
+  onSelectDeliverable: (deliverableId: string) => void;
   showImpactStrip: boolean;
   onClearScrollToTask?: () => void;
 }
@@ -93,6 +96,8 @@ export function Timeline({
   onSelectAction,
   onSetExtDepVisible,
   onSelectExtDep,
+  onSetDeliverablesVisible,
+  onSelectDeliverable,
   showImpactStrip,
   onClearScrollToTask,
 }: Props) {
@@ -347,13 +352,19 @@ export function Timeline({
   };
 
   const gridContentHeight = layout.totalHeight;
-  const raidBandVisible = state.view.raidActionsVisibleInTimeline;
+  const delivBandVisible = state.view.deliverablesVisibleInTimeline;
   const extDepVisible = state.view.externalDependenciesVisibleInTimeline;
+  const raidBandVisible = state.view.raidActionsVisibleInTimeline;
+  // Band stacking order: tasks → Deliverables → ExtDep → RAID
+  const delivBandTop = gridContentHeight + 4;
+  const extDepTop = delivBandTop + (delivBandVisible ? DELIVERABLES_BAND_HEIGHT + 4 : 0);
+  const raidBandTop = extDepTop + (extDepVisible ? EXT_DEP_BAND_HEIGHT + 4 : 0);
   const gridTotalHeight =
     gridContentHeight +
     TOTAL_HEADER_HEIGHT +
-    (raidBandVisible ? RAID_BAND_HEIGHT + 8 : 0) +
-    (extDepVisible ? EXT_DEP_BAND_HEIGHT + 4 : 0);
+    (delivBandVisible ? DELIVERABLES_BAND_HEIGHT + 4 : 0) +
+    (extDepVisible ? EXT_DEP_BAND_HEIGHT + 4 : 0) +
+    (raidBandVisible ? RAID_BAND_HEIGHT + 8 : 0);
 
   return (
     <section className="timeline-panel">
@@ -444,6 +455,17 @@ export function Timeline({
               <line x1="5" y1="6" x2="11" y2="6" strokeLinecap="round" />
             </svg>
             External dependencies
+          </button>
+          <button
+            type="button"
+            className={`milestones-only-chip${state.view.deliverablesVisibleInTimeline ? ' active' : ''}`}
+            onClick={() => onSetDeliverablesVisible(!state.view.deliverablesVisibleInTimeline)}
+            title={state.view.deliverablesVisibleInTimeline ? 'Hide deliverables' : 'Show deliverables'}
+          >
+            <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true">
+              <polygon points="6,1 11,6 6,11 1,6" fill="currentColor" />
+            </svg>
+            Deliverables
           </button>
           <ZoomControls zoom={state.view.zoom} onZoomChange={onZoom} onFit={handleFit} />
         </div>
@@ -539,14 +561,41 @@ export function Timeline({
                       top: 0,
                       height:
                         gridContentHeight +
-                        (raidBandVisible ? RAID_BAND_HEIGHT + 8 : 0) +
-                        (extDepVisible ? EXT_DEP_BAND_HEIGHT + 4 : 0),
+                        (delivBandVisible ? DELIVERABLES_BAND_HEIGHT + 4 : 0) +
+                        (extDepVisible ? EXT_DEP_BAND_HEIGHT + 4 : 0) +
+                        (raidBandVisible ? RAID_BAND_HEIGHT + 8 : 0),
                     }}
                   />
                 ) : null}
 
+                {delivBandVisible ? (
+                  <div style={{ position: 'absolute', top: delivBandTop, left: 0 }}>
+                    <DeliverablesOverlay
+                      deliverables={state.domain.deliverables}
+                      window_={window_}
+                      dayWidth={dayWidth}
+                      totalWidth={totalWidth}
+                      selectedDeliverableId={state.view.selectedDeliverableId}
+                      onSelectDeliverable={onSelectDeliverable}
+                    />
+                  </div>
+                ) : null}
+
+                {extDepVisible ? (
+                  <div style={{ position: 'absolute', top: extDepTop, left: 0 }}>
+                    <ExternalDependenciesOverlay
+                      deps={state.domain.externalDependencies}
+                      window_={window_}
+                      dayWidth={dayWidth}
+                      totalWidth={totalWidth}
+                      selectedExtDepId={state.view.selectedExtDepId}
+                      onSelectDep={onSelectExtDep}
+                    />
+                  </div>
+                ) : null}
+
                 {raidBandVisible ? (
-                  <div style={{ position: 'absolute', top: gridContentHeight + 4, left: 0 }}>
+                  <div style={{ position: 'absolute', top: raidBandTop, left: 0 }}>
                     <RaidActionsOverlay
                       actions={state.domain.raidActions}
                       risks={state.domain.risks}
@@ -554,30 +603,7 @@ export function Timeline({
                       dayWidth={dayWidth}
                       totalWidth={totalWidth}
                       selectedActionId={state.view.selectedActionId}
-                      onSelectAction={(actionId) => {
-                        onSelectAction(actionId);
-                      }}
-                    />
-                  </div>
-                ) : null}
-
-                {extDepVisible ? (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: gridContentHeight + 4 + (raidBandVisible ? RAID_BAND_HEIGHT + 8 : 0),
-                      left: 0,
-                    }}
-                  >
-                    <ExternalDependenciesOverlay
-                      deps={state.domain.externalDependencies}
-                      window_={window_}
-                      dayWidth={dayWidth}
-                      totalWidth={totalWidth}
-                      selectedExtDepId={state.view.selectedExtDepId}
-                      onSelectDep={(depId) => {
-                        onSelectExtDep(depId);
-                      }}
+                      onSelectAction={onSelectAction}
                     />
                   </div>
                 ) : null}

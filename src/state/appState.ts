@@ -16,6 +16,7 @@ import {
 import { ImpactBand, Risk, RiskScore, RiskStatus } from '../domain/risk';
 import { ActionStatus, RaidAction } from '../domain/raidAction';
 import { DepStatus, ExternalDependency } from '../domain/externalDependency';
+import { AcceptanceCriterion, Deliverable, DeliverableStatus, canBeAccepted } from '../domain/deliverable';
 import {
   addDependency,
   deepCopyTasks,
@@ -97,7 +98,22 @@ export type AppAction =
   | { type: 'addExternalDependency'; dep: ExternalDependency }
   | { type: 'updateExternalDependency'; depId: string; patch: Partial<ExternalDependency> }
   | { type: 'removeExternalDependency'; depId: string }
-  | { type: 'setExternalDependencyStatus'; depId: string; status: DepStatus };
+  | { type: 'setExternalDependencyStatus'; depId: string; status: DepStatus }
+  // Deliverables — view
+  | { type: 'selectDeliverable'; deliverableId: string | null; openDrawer?: boolean }
+  | { type: 'setDeliverablesVisible'; value: boolean }
+  // Deliverables — CRUD
+  | { type: 'addDeliverable'; deliverable: Deliverable }
+  | { type: 'updateDeliverable'; deliverableId: string; patch: Partial<Deliverable> }
+  | { type: 'removeDeliverable'; deliverableId: string }
+  | { type: 'setDeliverableStatus'; deliverableId: string; status: DeliverableStatus; acceptedBy?: string; rejectionReason?: string }
+  // Acceptance criteria
+  | { type: 'addAcceptanceCriterion'; deliverableId: string; criterion: AcceptanceCriterion }
+  | { type: 'updateAcceptanceCriterion'; deliverableId: string; criterionId: string; patch: Partial<AcceptanceCriterion> }
+  | { type: 'removeAcceptanceCriterion'; deliverableId: string; criterionId: string }
+  | { type: 'reorderAcceptanceCriteria'; deliverableId: string; orderedIds: string[] }
+  | { type: 'markCriterionMet'; deliverableId: string; criterionId: string }
+  | { type: 'markCriterionUnmet'; deliverableId: string; criterionId: string };
 
 function withRecomputedTasks(state: AppState, nextTasks: WorkItem[]): AppState {
   return {
@@ -592,6 +608,147 @@ export function appReducer(state: AppState, action: AppAction): AppState {
           : d,
       );
       return { ...state, domain: { ...state.domain, externalDependencies } };
+    }
+
+    // ------- Deliverables view -------
+    case 'selectDeliverable':
+      return {
+        ...state,
+        view: {
+          ...state.view,
+          selectedDeliverableId: action.deliverableId,
+          selectedTaskId: null,
+          selectedRiskId: null,
+          selectedActionId: null,
+          selectedExtDepId: null,
+          drawerOpen: action.openDrawer ?? state.view.drawerOpen,
+        },
+      };
+    case 'setDeliverablesVisible':
+      return { ...state, view: { ...state.view, deliverablesVisibleInTimeline: action.value } };
+
+    // ------- Deliverables CRUD -------
+    case 'addDeliverable':
+      return {
+        ...state,
+        domain: { ...state.domain, deliverables: [...state.domain.deliverables, action.deliverable] },
+      };
+    case 'updateDeliverable': {
+      const deliverables = state.domain.deliverables.map((d) =>
+        d.id === action.deliverableId
+          ? { ...d, ...action.patch, lastReviewedAt: new Date().toISOString() }
+          : d,
+      );
+      return { ...state, domain: { ...state.domain, deliverables } };
+    }
+    case 'removeDeliverable': {
+      const deliverables = state.domain.deliverables.filter((d) => d.id !== action.deliverableId);
+      const newId = state.view.selectedDeliverableId === action.deliverableId ? null : state.view.selectedDeliverableId;
+      return {
+        ...state,
+        domain: { ...state.domain, deliverables },
+        view: {
+          ...state.view,
+          selectedDeliverableId: newId,
+          drawerOpen: newId !== null && state.view.drawerOpen,
+        },
+      };
+    }
+    case 'setDeliverableStatus': {
+      const deliverable = state.domain.deliverables.find((d) => d.id === action.deliverableId);
+      if (!deliverable) return state;
+      if (action.status === 'Accepted' && !canBeAccepted(deliverable)) return state;
+      const now = new Date().toISOString();
+      const patch: Partial<Deliverable> = { status: action.status };
+      if (action.status === 'Accepted') {
+        patch.acceptedAt = now;
+        patch.acceptedBy = action.acceptedBy ?? 'system';
+      }
+      if (action.status === 'Rejected') {
+        patch.rejectedAt = now;
+        patch.rejectionReason = action.rejectionReason ?? '';
+      }
+      const deliverables = state.domain.deliverables.map((d) =>
+        d.id === action.deliverableId
+          ? { ...d, ...patch, lastReviewedAt: now }
+          : d,
+      );
+      return { ...state, domain: { ...state.domain, deliverables } };
+    }
+
+    // ------- Acceptance criteria -------
+    case 'addAcceptanceCriterion': {
+      const deliverables = state.domain.deliverables.map((d) =>
+        d.id === action.deliverableId
+          ? { ...d, acceptanceCriteria: [...d.acceptanceCriteria, action.criterion], lastReviewedAt: new Date().toISOString() }
+          : d,
+      );
+      return { ...state, domain: { ...state.domain, deliverables } };
+    }
+    case 'updateAcceptanceCriterion': {
+      const deliverables = state.domain.deliverables.map((d) => {
+        if (d.id !== action.deliverableId) return d;
+        return {
+          ...d,
+          acceptanceCriteria: d.acceptanceCriteria.map((c) =>
+            c.id === action.criterionId ? { ...c, ...action.patch } : c,
+          ),
+          lastReviewedAt: new Date().toISOString(),
+        };
+      });
+      return { ...state, domain: { ...state.domain, deliverables } };
+    }
+    case 'removeAcceptanceCriterion': {
+      const deliverables = state.domain.deliverables.map((d) => {
+        if (d.id !== action.deliverableId) return d;
+        return {
+          ...d,
+          acceptanceCriteria: d.acceptanceCriteria.filter((c) => c.id !== action.criterionId),
+          lastReviewedAt: new Date().toISOString(),
+        };
+      });
+      return { ...state, domain: { ...state.domain, deliverables } };
+    }
+    case 'reorderAcceptanceCriteria': {
+      const deliverables = state.domain.deliverables.map((d) => {
+        if (d.id !== action.deliverableId) return d;
+        const ordered = action.orderedIds
+          .map((id) => d.acceptanceCriteria.find((c) => c.id === id))
+          .filter((c): c is AcceptanceCriterion => c !== undefined);
+        return { ...d, acceptanceCriteria: ordered };
+      });
+      return { ...state, domain: { ...state.domain, deliverables } };
+    }
+    case 'markCriterionMet': {
+      const now = new Date().toISOString();
+      const deliverables = state.domain.deliverables.map((d) => {
+        if (d.id !== action.deliverableId) return d;
+        return {
+          ...d,
+          acceptanceCriteria: d.acceptanceCriteria.map((c) =>
+            c.id === action.criterionId
+              ? { ...c, met: true, metAt: now, metBy: 'system' }
+              : c,
+          ),
+          lastReviewedAt: now,
+        };
+      });
+      return { ...state, domain: { ...state.domain, deliverables } };
+    }
+    case 'markCriterionUnmet': {
+      const deliverables = state.domain.deliverables.map((d) => {
+        if (d.id !== action.deliverableId) return d;
+        return {
+          ...d,
+          acceptanceCriteria: d.acceptanceCriteria.map((c) =>
+            c.id === action.criterionId
+              ? { ...c, met: false, metAt: null, metBy: null }
+              : c,
+          ),
+          lastReviewedAt: new Date().toISOString(),
+        };
+      });
+      return { ...state, domain: { ...state.domain, deliverables } };
     }
 
     default: {

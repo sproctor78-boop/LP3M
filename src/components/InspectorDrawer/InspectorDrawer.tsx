@@ -1,4 +1,4 @@
-import { AppState, ExternalDependency, ImpactBand, Person, RaidAction, Risk, RiskScore, WorkItem } from '../../domain/types';
+import { AcceptanceCriterion, AppState, Deliverable, DeliverableStatus, ExternalDependency, ImpactBand, Person, RaidAction, Risk, RiskScore, WorkItem } from '../../domain/types';
 import { TaskInspector } from './TaskInspector';
 import { ImpactPanel } from './ImpactPanel';
 import { RiskInspector } from '../RiskRegister/RiskInspector';
@@ -6,6 +6,8 @@ import { RiskCreateForm } from '../RiskRegister/RiskCreateForm';
 import { RaidActionInspector } from './RaidActionInspector';
 import { ExternalDependencyCreateForm } from '../ExternalDependenciesRegister/ExternalDependencyCreateForm';
 import { ExternalDependencyInspector } from '../ExternalDependenciesRegister/ExternalDependencyInspector';
+import { DeliverableCreateForm } from '../DeliverablesRegister/DeliverableCreateForm';
+import { DeliverableInspector } from '../DeliverablesRegister/DeliverableInspector';
 
 interface Props {
   state: AppState;
@@ -46,6 +48,20 @@ interface Props {
   onCloseExtDepCreate?: () => void;
   onUpdateExtDep?: (depId: string, patch: Partial<ExternalDependency>) => void;
   onRemoveExtDep?: (depId: string) => void;
+  // Deliverable create/edit
+  showDeliverableCreate?: boolean;
+  selectedDeliverable?: Deliverable | null;
+  onCreateDeliverable?: (deliverable: Deliverable) => void;
+  onCloseDeliverableCreate?: () => void;
+  onUpdateDeliverable?: (deliverableId: string, patch: Partial<Deliverable>) => void;
+  onSetDeliverableStatus?: (deliverableId: string, status: DeliverableStatus, acceptedBy?: string, rejectionReason?: string) => void;
+  onRemoveDeliverable?: (deliverableId: string) => void;
+  onAddCriterion?: (deliverableId: string, criterion: AcceptanceCriterion) => void;
+  onUpdateCriterion?: (deliverableId: string, criterionId: string, patch: Partial<AcceptanceCriterion>) => void;
+  onRemoveCriterion?: (deliverableId: string, criterionId: string) => void;
+  onReorderCriteria?: (deliverableId: string, orderedIds: string[]) => void;
+  onMarkCriterionMet?: (deliverableId: string, criterionId: string) => void;
+  onMarkCriterionUnmet?: (deliverableId: string, criterionId: string) => void;
   today?: string;
 }
 
@@ -86,18 +102,37 @@ export function InspectorDrawer({
   onCloseExtDepCreate,
   onUpdateExtDep,
   onRemoveExtDep,
+  showDeliverableCreate,
+  selectedDeliverable,
+  onCreateDeliverable,
+  onCloseDeliverableCreate,
+  onUpdateDeliverable,
+  onSetDeliverableStatus,
+  onRemoveDeliverable,
+  onAddCriterion,
+  onUpdateCriterion,
+  onRemoveCriterion,
+  onReorderCriteria,
+  onMarkCriterionMet,
+  onMarkCriterionUnmet,
   today = new Date().toISOString().slice(0, 10),
 }: Props) {
   const fc = state.pendingForecast;
   let kicker = 'Inspector';
   let title = 'Select an item';
 
-  if (showExtDepCreate) {
+  if (showDeliverableCreate) {
+    kicker = 'New Deliverable';
+    title = 'Create deliverable';
+  } else if (showExtDepCreate) {
     kicker = 'New External Dependency';
     title = 'Create dependency';
   } else if (showRiskCreate) {
     kicker = 'New Risk';
     title = 'Create risk';
+  } else if (selectedDeliverable) {
+    kicker = 'Deliverable';
+    title = selectedDeliverable.title;
   } else if (selectedExtDep) {
     kicker = 'External Dependency';
     title = selectedExtDep.title;
@@ -116,7 +151,34 @@ export function InspectorDrawer({
   }
 
   let body: JSX.Element;
-  if (showExtDepCreate && onCreateExtDep && onCloseExtDepCreate) {
+  if (showDeliverableCreate && onCreateDeliverable && onCloseDeliverableCreate) {
+    body = (
+      <DeliverableCreateForm
+        tasks={state.domain.tasks}
+        onSave={onCreateDeliverable}
+        onClose={onCloseDeliverableCreate}
+      />
+    );
+  } else if (selectedDeliverable && onUpdateDeliverable && onSetDeliverableStatus && onRemoveDeliverable
+    && onAddCriterion && onUpdateCriterion && onRemoveCriterion && onReorderCriteria
+    && onMarkCriterionMet && onMarkCriterionUnmet) {
+    body = (
+      <DeliverableInspector
+        deliverable={selectedDeliverable}
+        tasks={state.domain.tasks}
+        today={today}
+        onUpdate={onUpdateDeliverable}
+        onSetStatus={onSetDeliverableStatus}
+        onRemove={onRemoveDeliverable}
+        onAddCriterion={onAddCriterion}
+        onUpdateCriterion={onUpdateCriterion}
+        onRemoveCriterion={onRemoveCriterion}
+        onReorderCriteria={onReorderCriteria}
+        onMarkMet={onMarkCriterionMet}
+        onMarkUnmet={onMarkCriterionUnmet}
+      />
+    );
+  } else if (showExtDepCreate && onCreateExtDep && onCloseExtDepCreate) {
     body = (
       <ExternalDependencyCreateForm
         tasks={state.domain.tasks}
@@ -211,9 +273,9 @@ export function InspectorDrawer({
     );
   }
 
-  const drawerOpen = state.view.drawerOpen || !!showRiskCreate || !!showExtDepCreate;
+  const drawerOpen = state.view.drawerOpen || !!showRiskCreate || !!showExtDepCreate || !!showDeliverableCreate;
 
-  const isWide = wide || showExtDepCreate;
+  const isWide = wide || showExtDepCreate || showDeliverableCreate;
 
   return (
     <aside className={`drawer${drawerOpen ? ' open' : ''}${isWide ? ' wide' : ''}`}>

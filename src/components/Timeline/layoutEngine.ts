@@ -99,6 +99,13 @@ export function computeTimelineWindow(state: AppState): TimelineWindow {
       if (d.targetDate > maxDate) maxDate = d.targetDate;
     });
   }
+  // Include deliverable target dates when overlay is visible
+  if (state.view.deliverablesVisibleInTimeline) {
+    state.domain.deliverables.forEach((d) => {
+      if (d.targetDate < minDate) minDate = d.targetDate;
+      if (d.targetDate > maxDate) maxDate = d.targetDate;
+    });
+  }
 
   // Fall back to today if no tasks
   if (minDate === '9999-12-31') {
