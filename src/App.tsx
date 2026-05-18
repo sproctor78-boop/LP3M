@@ -94,6 +94,11 @@ export function App() {
       ? state.domain.risks.find((r) => r.id === state.view.selectedRiskId) ?? null
       : null;
 
+  const selectedAction =
+    state.view.selectedActionId
+      ? state.domain.raidActions.find((a) => a.id === state.view.selectedActionId) ?? null
+      : null;
+
   return (
     <>
       <AppShell
@@ -130,10 +135,27 @@ export function App() {
               }
             />
           ) : state.view.mode === 'raidBoard' ? (
-            // Phase 3: RAID Actions Board
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--ink-faint)', fontStyle: 'italic' }}>
-              RAID Actions Board — coming in Phase 3
-            </div>
+            <Board
+              state={state}
+              source="raidActions"
+              onSelectTask={(taskId) =>
+                dispatch({ type: 'selectTask', taskId, openDrawer: true })
+              }
+              onMoveTaskStatus={(taskId, status) =>
+                dispatch({ type: 'moveTaskStatus', taskId, status })
+              }
+              onRenameColumn={(key, label) => dispatch({ type: 'renameColumn', key, label })}
+              onDeleteColumn={(key) => dispatch({ type: 'deleteColumn', key })}
+              onAddColumn={() => dispatch({ type: 'addColumn' })}
+              onNewTask={() => {}}
+              onCollapseBoard={() => dispatch({ type: 'setViewMode', mode: 'timeline' })}
+              onSelectAction={(actionId) =>
+                dispatch({ type: 'selectRaidAction', actionId, openDrawer: true })
+              }
+              onMoveActionStatus={(actionId, status) =>
+                dispatch({ type: 'updateRaidAction', actionId, patch: { status } })
+              }
+            />
           ) : (
             <Timeline
               state={state}
@@ -203,6 +225,7 @@ export function App() {
         state={state}
         selectedTask={selectedTask}
         selectedRisk={selectedRisk}
+        selectedAction={selectedAction}
         onClose={() => dispatch({ type: 'closeDrawer' })}
         onUpdateRisk={(riskId, patch) => dispatch({ type: 'updateRisk', riskId, patch })}
         onDeleteRisk={(riskId) => {
@@ -275,6 +298,17 @@ export function App() {
           })
         }
         onCreatePerson={(person) => dispatch({ type: 'addPerson', person })}
+        onUpdateRaidAction={(actionId, patch) =>
+          dispatch({ type: 'updateRaidAction', actionId, patch })
+        }
+        onDeleteRaidAction={(actionId) => {
+          dispatch({ type: 'deleteRaidAction', actionId });
+          showHint('Action deleted');
+        }}
+        onCompleteRaidAction={(actionId, effectiveness) => {
+          dispatch({ type: 'completeRaidAction', actionId, effectiveness });
+          showHint('Action marked complete — risk pending approval');
+        }}
       />
 
       {showTaskModal ? (

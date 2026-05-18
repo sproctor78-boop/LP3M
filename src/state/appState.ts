@@ -73,6 +73,7 @@ export type AppAction =
   | { type: 'removePerson'; personId: string }
   // RAID — view
   | { type: 'selectRisk'; riskId: string | null; openDrawer?: boolean }
+  | { type: 'selectRaidAction'; actionId: string | null; openDrawer?: boolean }
   | { type: 'setRaidActionsVisible'; value: boolean }
   // RAID — risk CRUD
   | { type: 'createRisk'; risk: Risk }
@@ -134,6 +135,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
           ...state.view,
           selectedTaskId: action.taskId,
           selectedRiskId: null,
+          selectedActionId: null,
           drawerOpen: action.openDrawer ?? state.view.drawerOpen,
           selectedDep: null,
         },
@@ -397,6 +399,18 @@ export function appReducer(state: AppState, action: AppAction): AppState {
           ...state.view,
           selectedRiskId: action.riskId,
           selectedTaskId: null,
+          selectedActionId: null,
+          drawerOpen: action.openDrawer ?? state.view.drawerOpen,
+        },
+      };
+    case 'selectRaidAction':
+      return {
+        ...state,
+        view: {
+          ...state.view,
+          selectedActionId: action.actionId,
+          selectedTaskId: null,
+          selectedRiskId: null,
           drawerOpen: action.openDrawer ?? state.view.drawerOpen,
         },
       };
@@ -445,7 +459,16 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     }
     case 'deleteRaidAction': {
       const raidActions = state.domain.raidActions.filter((a) => a.id !== action.actionId);
-      return { ...state, domain: { ...state.domain, raidActions } };
+      const newActionId = state.view.selectedActionId === action.actionId ? null : state.view.selectedActionId;
+      return {
+        ...state,
+        domain: { ...state.domain, raidActions },
+        view: {
+          ...state.view,
+          selectedActionId: newActionId,
+          drawerOpen: newActionId !== null && state.view.drawerOpen,
+        },
+      };
     }
 
     // ------- RAID PendingApproval flow -------

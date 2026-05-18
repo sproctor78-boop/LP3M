@@ -149,6 +149,8 @@ export interface AppViewState {
   raidActionsVisibleInTimeline: boolean;
   /** ID of the currently selected risk, or null. */
   selectedRiskId: string | null;
+  /** ID of the currently selected RAID action, or null. */
+  selectedActionId: string | null;
 }
 
 export interface TaskMovement {

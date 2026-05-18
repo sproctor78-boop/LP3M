@@ -41,6 +41,7 @@ export function createInitialAppState(): AppState {
       milestonesOnly: false,
       raidActionsVisibleInTimeline: false,
       selectedRiskId: null,
+      selectedActionId: null,
     },
     pendingForecast: null,
     pendingChange: null,
@@ -79,7 +80,9 @@ function migrateView(view: AppState['view']): AppState['view'] {
     typeof raw.raidActionsVisibleInTimeline === 'boolean' ? raw.raidActionsVisibleInTimeline : false;
   const selectedRiskId =
     typeof raw.selectedRiskId === 'string' ? raw.selectedRiskId : null;
-  return { ...view, mode, taskListWidth, scrollToTaskId: null, milestonesOnly, raidActionsVisibleInTimeline, selectedRiskId };
+  const selectedActionId =
+    typeof raw.selectedActionId === 'string' ? raw.selectedActionId : null;
+  return { ...view, mode, taskListWidth, scrollToTaskId: null, milestonesOnly, raidActionsVisibleInTimeline, selectedRiskId, selectedActionId };
 }
 
 /**

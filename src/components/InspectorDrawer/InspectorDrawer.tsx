@@ -1,12 +1,14 @@
-import { AppState, Person, Risk, RiskScore, WorkItem } from '../../domain/types';
+import { AppState, ImpactBand, Person, RaidAction, Risk, RiskScore, WorkItem } from '../../domain/types';
 import { TaskInspector } from './TaskInspector';
 import { ImpactPanel } from './ImpactPanel';
 import { RiskInspector } from '../RiskRegister/RiskInspector';
+import { RaidActionInspector } from './RaidActionInspector';
 
 interface Props {
   state: AppState;
   selectedTask: WorkItem | null;
   selectedRisk: Risk | null;
+  selectedAction: RaidAction | null;
   onClose: () => void;
   onApplyForecast: () => void;
   onCancelForecast: () => void;
@@ -26,12 +28,16 @@ interface Props {
   onDeleteRisk: (riskId: string) => void;
   onApproveResidualScore: (riskId: string, newResidual: RiskScore) => void;
   onRejectResidualScore: (riskId: string) => void;
+  onUpdateRaidAction: (actionId: string, patch: Partial<RaidAction>) => void;
+  onDeleteRaidAction: (actionId: string) => void;
+  onCompleteRaidAction: (actionId: string, effectiveness: ImpactBand) => void;
 }
 
 export function InspectorDrawer({
   state,
   selectedTask,
   selectedRisk,
+  selectedAction,
   onClose,
   onApplyForecast,
   onCancelForecast,
@@ -51,6 +57,9 @@ export function InspectorDrawer({
   onDeleteRisk,
   onApproveResidualScore,
   onRejectResidualScore,
+  onUpdateRaidAction,
+  onDeleteRaidAction,
+  onCompleteRaidAction,
 }: Props) {
   const fc = state.pendingForecast;
   let kicker = 'Inspector';
@@ -65,6 +74,9 @@ export function InspectorDrawer({
   } else if (selectedRisk) {
     kicker = selectedRisk.status === 'PendingApproval' ? 'Risk · Pending Approval' : 'Risk Detail';
     title = selectedRisk.title;
+  } else if (selectedAction) {
+    kicker = selectedAction.status === 'Overdue' ? 'Action · Overdue' : 'Action Detail';
+    title = selectedAction.title;
   }
 
   let body: JSX.Element;
@@ -105,6 +117,17 @@ export function InspectorDrawer({
         onDeleteRisk={onDeleteRisk}
         onApproveResidualScore={onApproveResidualScore}
         onRejectResidualScore={onRejectResidualScore}
+      />
+    );
+  } else if (selectedAction) {
+    const risk = state.domain.risks.find((r) => r.id === selectedAction.riskId) ?? null;
+    body = (
+      <RaidActionInspector
+        action={selectedAction}
+        risk={risk}
+        onUpdateAction={onUpdateRaidAction}
+        onDeleteAction={onDeleteRaidAction}
+        onCompleteAction={onCompleteRaidAction}
       />
     );
   } else {
