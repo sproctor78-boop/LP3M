@@ -6,7 +6,8 @@
 
 import { Risk } from './risk';
 import { RaidAction } from './raidAction';
-export type { Risk, RiskScore, RiskScores, RiskStatus, RiskCategory, RagColour, ImpactBand, ProbabilityBand, ResponseItem } from './risk';
+export type { Risk, RiskScore, RiskScores, RiskStatus, RiskCategory, RagColour, ImpactBand, ProbabilityBand, ResponseItem, Proximity } from './risk';
+export { PROXIMITY_BANDS, getProximityFromDate } from './risk';
 export type { RaidAction, ActionStatus } from './raidAction';
 
 export type TaskStatusKey = string; // a key into AppDomainState.columns
@@ -151,6 +152,8 @@ export interface AppViewState {
   selectedRiskId: string | null;
   /** ID of the currently selected RAID action, or null. */
   selectedActionId: string | null;
+  /** Persisted collapse state for Risk Register Inherent/Residual column groups. */
+  riskRegisterCollapseState: { inherentCollapsed: boolean; residualCollapsed: boolean };
 }
 
 export interface TaskMovement {

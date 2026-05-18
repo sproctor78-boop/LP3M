@@ -21,6 +21,7 @@ export function App() {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [taskModalParent, setTaskModalParent] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showRiskCreate, setShowRiskCreate] = useState(false);
   const breachCycleRef = useRef(0);
 
   // Persist on every state change (excluding pendingForecast — handled by adapter)
@@ -38,6 +39,10 @@ export function App() {
       }
       if (showTaskModal) {
         setShowTaskModal(false);
+        return;
+      }
+      if (showRiskCreate) {
+        setShowRiskCreate(false);
         return;
       }
       if (document.body.classList.contains('drawing-dep')) {
@@ -61,7 +66,7 @@ export function App() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [showSettings, showTaskModal, state.view.drawerOpen, state.view.selectedDep]);
+  }, [showSettings, showTaskModal, showRiskCreate, state.view.drawerOpen, state.view.selectedDep]);
 
   // Initial hint
   useEffect(() => {
@@ -132,6 +137,10 @@ export function App() {
               state={state}
               onSelectRisk={(riskId) =>
                 dispatch({ type: 'selectRisk', riskId, openDrawer: true })
+              }
+              onNewRisk={() => setShowRiskCreate(true)}
+              onSetCollapse={(group, collapsed) =>
+                dispatch({ type: 'setRiskColumnCollapse', group, collapsed })
               }
             />
           ) : state.view.mode === 'raidBoard' ? (
@@ -230,7 +239,14 @@ export function App() {
         selectedTask={selectedTask}
         selectedRisk={selectedRisk}
         selectedAction={selectedAction}
-        onClose={() => dispatch({ type: 'closeDrawer' })}
+        wide={showRiskCreate}
+        showRiskCreate={showRiskCreate}
+        onCreateRisk={(risk) => {
+          dispatch({ type: 'createRisk', risk });
+          showHint(`Risk ${risk.id} created`);
+        }}
+        onCloseRiskCreate={() => setShowRiskCreate(false)}
+        onClose={() => { dispatch({ type: 'closeDrawer' }); setShowRiskCreate(false); }}
         onUpdateRisk={(riskId, patch) => dispatch({ type: 'updateRisk', riskId, patch })}
         onDeleteRisk={(riskId) => {
           dispatch({ type: 'deleteRisk', riskId });

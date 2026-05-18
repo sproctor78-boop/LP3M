@@ -10,8 +10,8 @@ import { AppState } from '../domain/types';
 import { createInitialDomainState } from '../domain/seedData';
 import { DEFAULT_TASK_LIST_WIDTH, DEFAULT_ZOOM } from '../domain/constants';
 
-const STORE_KEY = 'ripple_state_v5';
-const STORE_VERSION = 5;
+const STORE_KEY = 'ripple_state_v6';
+const STORE_VERSION = 6;
 
 interface StoredEnvelope {
   version: number;
@@ -42,6 +42,7 @@ export function createInitialAppState(): AppState {
       raidActionsVisibleInTimeline: false,
       selectedRiskId: null,
       selectedActionId: null,
+      riskRegisterCollapseState: { inherentCollapsed: true, residualCollapsed: false },
     },
     pendingForecast: null,
     pendingChange: null,
@@ -82,7 +83,12 @@ function migrateView(view: AppState['view']): AppState['view'] {
     typeof raw.selectedRiskId === 'string' ? raw.selectedRiskId : null;
   const selectedActionId =
     typeof raw.selectedActionId === 'string' ? raw.selectedActionId : null;
-  return { ...view, mode, taskListWidth, scrollToTaskId: null, milestonesOnly, raidActionsVisibleInTimeline, selectedRiskId, selectedActionId };
+  const rawCollapse = raw.riskRegisterCollapseState as Record<string, unknown> | undefined;
+  const riskRegisterCollapseState = {
+    inherentCollapsed: typeof rawCollapse?.inherentCollapsed === 'boolean' ? rawCollapse.inherentCollapsed : true,
+    residualCollapsed: typeof rawCollapse?.residualCollapsed === 'boolean' ? rawCollapse.residualCollapsed : false,
+  };
+  return { ...view, mode, taskListWidth, scrollToTaskId: null, milestonesOnly, raidActionsVisibleInTimeline, selectedRiskId, selectedActionId, riskRegisterCollapseState };
 }
 
 /**
@@ -94,10 +100,15 @@ function migrateDomain(domain: AppState['domain']): AppState['domain'] {
   const people = Array.isArray(raw.people) ? raw.people : [];
   const risks = Array.isArray(raw.risks) ? raw.risks : [];
   const raidActions = Array.isArray(raw.raidActions) ? raw.raidActions : [];
+  const migratedRisks = risks.map((r: unknown) => {
+    const risk = r as Record<string, unknown>;
+    if (!risk.proximity) return { ...risk, proximity: 'MediumTerm' };
+    return risk;
+  }) as unknown as AppState['domain']['risks'];
   return {
     ...domain,
     people,
-    risks,
+    risks: migratedRisks,
     raidActions,
     tasks: domain.tasks.map((task) => {
       const t = task as unknown as Record<string, unknown>;
