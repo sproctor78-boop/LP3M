@@ -14,7 +14,9 @@
 // pass a deep copy in if the caller needs the original preserved.
 // =============================================================================
 
-import { ConstraintIssue, WorkItem } from '../domain/types';
+import { Constraint, ConstraintIssue, WorkItem } from '../domain/types';
+import { ExternalDependency } from '../domain/externalDependency';
+import { Deliverable } from '../domain/deliverable';
 import { addDays, diffDays } from './dateUtils';
 import { topoSort } from './dependencyEngine';
 
@@ -182,10 +184,97 @@ export function computeCriticalPathAndFloat(tasks: WorkItem[]): string {
 /**
  * Run forward pass + backward pass on the given task array (mutates).
  * Pass a deep copy in if you need the original preserved.
+ *
+ * When externalDeps is supplied, soft start_no_earlier_than constraints are
+ * derived for tasks linked to non-Received dependencies whose targetDate is
+ * later than the task's current startDate. These derived constraints are applied
+ * only during the forward pass and stripped from the returned tasks — stored
+ * WorkItem.constraint values are never mutated. Tasks linked to a 'Late'
+ * dependency receive forecastWarning = true in the output.
+ *
+ * When deliverables is supplied, tasks linked to a Rejected deliverable, or to
+ * an overdue deliverable (past targetDate and not Accepted), receive
+ * deliverableWarning = true in the output.
  */
-export function recomputeSchedule(tasks: WorkItem[]): WorkItem[] {
+export function recomputeSchedule(
+  tasks: WorkItem[],
+  externalDeps?: ExternalDependency[],
+  deliverables?: Deliverable[],
+): WorkItem[] {
+  // ── Derived external-dep enrichment (pre-pass) ────────────────────────────
+  // savedConstraints maps taskId → original constraint so we can restore it
+  // after the forward pass without touching stored state.
+  const savedConstraints = new Map<string, Constraint | null>();
+  const forecastWarningSet = new Set<string>();
+
+  if (externalDeps?.length) {
+    // Build a taskId → task lookup for O(1) access.
+    const taskMap = new Map(tasks.map((t) => [t.id, t]));
+
+    for (const dep of externalDeps) {
+      if (dep.status === 'Received') continue;
+
+      for (const taskId of dep.linkedTaskIds) {
+        const task = taskMap.get(taskId);
+        if (!task) continue;
+
+        // Only constrain if the dep's targetDate would push the task later.
+        if (dep.targetDate <= task.startDate) {
+          // Date is already satisfied; still track warnings.
+          if (dep.status === 'Late') forecastWarningSet.add(taskId);
+          continue;
+        }
+
+        if (dep.status === 'Late') forecastWarningSet.add(taskId);
+
+        // Don't override hard constraints — they have scheduling priority.
+        if (task.constraint?.hard) continue;
+
+        // Save the original constraint (first write wins — preserves the true original).
+        if (!savedConstraints.has(taskId)) {
+          savedConstraints.set(taskId, task.constraint);
+        }
+
+        // Apply the strongest soft SNET seen so far for this task.
+        const existing = task.constraint;
+        const applyDate =
+          existing?.type === 'start_no_earlier_than' && existing.date > dep.targetDate
+            ? existing.date
+            : dep.targetDate;
+        task.constraint = { type: 'start_no_earlier_than', date: applyDate, hard: false };
+      }
+    }
+  }
+
   forwardPass(tasks);
   computeCriticalPathAndFloat(tasks);
+
+  // ── Restore original constraints (strip derived ones) ─────────────────────
+  savedConstraints.forEach((original, taskId) => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (task) task.constraint = original;
+  });
+
+  // ── Apply engine-derived warning flags ────────────────────────────────────
+  const today = new Date().toISOString().slice(0, 10);
+  const deliverableWarningSet = new Set<string>();
+  if (deliverables?.length) {
+    for (const del of deliverables) {
+      const isProblematic =
+        del.status === 'Rejected' ||
+        (del.targetDate < today && del.status !== 'Accepted');
+      if (!isProblematic) continue;
+      for (const taskId of del.linkedTaskIds) {
+        deliverableWarningSet.add(taskId);
+      }
+    }
+  }
+
+  tasks.forEach((t) => {
+    t.forecastWarning = forecastWarningSet.has(t.id) || undefined;
+    t.deliverableWarning = deliverableWarningSet.has(t.id) || undefined;
+  });
+
   return tasks;
 }
 

@@ -77,6 +77,8 @@ export function RiskCreateForm({ onSave, onClose }: Props) {
     reviewDate: reviewDate || today(),
     lastModifiedAt: new Date().toISOString(),
     proximity,
+    linkedTaskIds: [],
+    linkedDeliverableIds: [],
   });
 
   const handleSave = () => {

@@ -118,7 +118,10 @@ export type AppAction =
 function withRecomputedTasks(state: AppState, nextTasks: WorkItem[]): AppState {
   return {
     ...state,
-    domain: { ...state.domain, tasks: recomputeSchedule(nextTasks) },
+    domain: {
+      ...state.domain,
+      tasks: recomputeSchedule(nextTasks, state.domain.externalDependencies, state.domain.deliverables),
+    },
   };
 }
 
@@ -303,17 +306,42 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       };
     }
     case 'deleteTask': {
-      // Remove the task and any children, plus incoming dependencies.
-      const next = deepCopyTasks(state.domain.tasks)
-        .filter((t) => t.id !== action.taskId && t.parentId !== action.taskId)
+      // Collect the full set of IDs being removed: the task itself plus its direct children.
+      const deletedIds = new Set<string>([action.taskId]);
+      state.domain.tasks.forEach((t) => {
+        if (t.parentId === action.taskId) deletedIds.add(t.id);
+      });
+
+      const nextTasks = deepCopyTasks(state.domain.tasks)
+        .filter((t) => !deletedIds.has(t.id))
         .map((t) => ({
           ...t,
-          dependencies: t.dependencies.filter((d) => d.taskId !== action.taskId),
+          dependencies: t.dependencies.filter((d) => !deletedIds.has(d.taskId)),
         }));
+
+      // Remove deleted IDs from ext-dep and deliverable linked-task lists.
+      const nextExtDeps = state.domain.externalDependencies.map((dep) => ({
+        ...dep,
+        linkedTaskIds: dep.linkedTaskIds.filter((id) => !deletedIds.has(id)),
+      }));
+      const nextDeliverables = state.domain.deliverables.map((del) => ({
+        ...del,
+        linkedTaskIds: del.linkedTaskIds.filter((id) => !deletedIds.has(id)),
+      }));
+
+      const recomputedTasks = recomputeSchedule(nextTasks, nextExtDeps, nextDeliverables);
       const newSelected =
-        state.view.selectedTaskId === action.taskId ? null : state.view.selectedTaskId;
+        state.view.selectedTaskId && deletedIds.has(state.view.selectedTaskId)
+          ? null
+          : state.view.selectedTaskId;
       return {
-        ...withRecomputedTasks(state, next),
+        ...state,
+        domain: {
+          ...state.domain,
+          tasks: recomputedTasks,
+          externalDependencies: nextExtDeps,
+          deliverables: nextDeliverables,
+        },
         view: { ...state.view, selectedTaskId: newSelected, drawerOpen: newSelected !== null && state.view.drawerOpen },
       };
     }
