@@ -41,6 +41,8 @@ export function seedRisks(): Risk[] {
       reviewDate: '2026-06-30',
       lastModifiedAt: TS,
       proximity: 'NearTerm' as Proximity,
+      linkedTaskIds: [],
+      linkedDeliverableIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -70,6 +72,8 @@ export function seedRisks(): Risk[] {
       reviewDate: '2026-06-10',
       lastModifiedAt: TS,
       proximity: 'Imminent' as Proximity,
+      linkedTaskIds: [],
+      linkedDeliverableIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -100,6 +104,8 @@ export function seedRisks(): Risk[] {
       reviewDate: '2026-06-06',
       lastModifiedAt: '2026-05-09T11:00:00.000Z',
       proximity: 'Imminent' as Proximity,
+      linkedTaskIds: [],
+      linkedDeliverableIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -129,6 +135,8 @@ export function seedRisks(): Risk[] {
       reviewDate: '2026-06-20',
       lastModifiedAt: TS,
       proximity: 'NearTerm' as Proximity,
+      linkedTaskIds: [],
+      linkedDeliverableIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -156,6 +164,8 @@ export function seedRisks(): Risk[] {
       reviewDate: '2026-07-01',
       lastModifiedAt: TS,
       proximity: 'NearTerm' as Proximity,
+      linkedTaskIds: [],
+      linkedDeliverableIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -185,6 +195,8 @@ export function seedRisks(): Risk[] {
       reviewDate: '2026-06-27',
       lastModifiedAt: TS,
       proximity: 'NearTerm' as Proximity,
+      linkedTaskIds: [],
+      linkedDeliverableIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -212,6 +224,8 @@ export function seedRisks(): Risk[] {
       reviewDate: '2026-07-01',
       lastModifiedAt: TS,
       proximity: 'NearTerm' as Proximity,
+      linkedTaskIds: [],
+      linkedDeliverableIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -241,6 +255,8 @@ export function seedRisks(): Risk[] {
       reviewDate: '2026-05-30',
       lastModifiedAt: TS,
       proximity: 'Imminent' as Proximity,
+      linkedTaskIds: [],
+      linkedDeliverableIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -268,6 +284,8 @@ export function seedRisks(): Risk[] {
       reviewDate: '2026-07-01',
       lastModifiedAt: TS,
       proximity: 'NearTerm' as Proximity,
+      linkedTaskIds: [],
+      linkedDeliverableIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -297,6 +315,8 @@ export function seedRisks(): Risk[] {
       reviewDate: '2026-07-18',
       lastModifiedAt: TS,
       proximity: 'NearTerm' as Proximity,
+      linkedTaskIds: [],
+      linkedDeliverableIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -324,6 +344,8 @@ export function seedRisks(): Risk[] {
       reviewDate: '2026-06-28',
       lastModifiedAt: TS,
       proximity: 'NearTerm' as Proximity,
+      linkedTaskIds: [],
+      linkedDeliverableIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -353,6 +375,8 @@ export function seedRisks(): Risk[] {
       reviewDate: '2026-06-19',
       lastModifiedAt: TS,
       proximity: 'NearTerm' as Proximity,
+      linkedTaskIds: [],
+      linkedDeliverableIds: [],
     },
   ];
 }

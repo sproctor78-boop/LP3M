@@ -80,6 +80,10 @@ export interface WorkItem {
   // Derived (set by the schedule engine, not user-edited):
   criticalPath?: boolean;
   floatDays?: number;
+  /** True when a linked ExternalDependency has status 'Late'. Engine-derived; not stored by the user. */
+  forecastWarning?: boolean;
+  /** True when a linked Deliverable is Rejected or overdue. Engine-derived; not stored by the user. */
+  deliverableWarning?: boolean;
 }
 
 export interface BoardColumn {

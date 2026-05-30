@@ -92,4 +92,14 @@ export interface Risk {
   lastModifiedAt: string;
   /** How soon the risk is likely to materialise, derived from reviewDate. */
   proximity: Proximity;
+
+  // ── Task / deliverable linkage ────────────────────────────────────────────
+  /** IDs of WorkItems directly associated with this risk. */
+  linkedTaskIds: string[];
+  /** IDs of Deliverables directly associated with this risk. */
+  linkedDeliverableIds: string[];
+  /** Estimated schedule slip if the risk materialises (three-point estimate, in calendar days). */
+  scheduleImpactDays?: { optimistic: number; mostLikely: number; pessimistic: number };
+  /** Primary impact dimension of this risk. */
+  impactType?: 'schedule' | 'cost' | 'quality' | 'scope' | 'mixed';
 }
