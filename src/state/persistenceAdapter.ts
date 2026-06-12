@@ -50,6 +50,8 @@ export function createInitialAppState(): AppState {
     },
     pendingForecast: null,
     pendingChange: null,
+    _past: [],
+    _future: [],
   };
 }
 
@@ -167,6 +169,8 @@ export function loadAppState(): AppState {
       view: migrateView(parsed.state.view),
       pendingForecast: null,
       pendingChange: null,
+      _past: [],
+      _future: [],
     };
   } catch {
     return createInitialAppState();

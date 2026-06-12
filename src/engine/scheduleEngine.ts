@@ -200,6 +200,7 @@ export function recomputeSchedule(
   tasks: WorkItem[],
   externalDeps?: ExternalDependency[],
   deliverables?: Deliverable[],
+  today?: string,
 ): WorkItem[] {
   // ── Derived external-dep enrichment (pre-pass) ────────────────────────────
   // savedConstraints maps taskId → original constraint so we can restore it
@@ -256,7 +257,10 @@ export function recomputeSchedule(
   });
 
   // ── Apply engine-derived warning flags ────────────────────────────────────
-  const today = new Date().toISOString().slice(0, 10);
+  if (today === undefined) {
+    const d = new Date();
+    today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
   const deliverableWarningSet = new Set<string>();
   if (deliverables?.length) {
     for (const del of deliverables) {

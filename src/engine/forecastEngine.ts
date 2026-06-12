@@ -14,19 +14,29 @@ import {
 } from '../domain/types';
 import { addDays, diffDays } from './dateUtils';
 import { computeLinkedTasks, deepCopyTasks } from './dependencyEngine';
+import { ExternalDependency } from '../domain/externalDependency';
+import { Deliverable } from '../domain/deliverable';
 import {
   computeCriticalPathAndFloat,
   detectConstraintIssues,
   forwardPass,
+  recomputeSchedule,
 } from './scheduleEngine';
 
 interface InternalTask extends WorkItem {
   _directlyChanged?: boolean;
 }
 
+export interface ForecastContext {
+  externalDeps?: ExternalDependency[];
+  deliverables?: Deliverable[];
+  today?: string;
+}
+
 export function forecast(
   originalTasks: WorkItem[],
   change: ProposedChange,
+  context?: ForecastContext,
 ): ForecastResult | null {
   const proposed = deepCopyTasks(originalTasks) as InternalTask[];
   const target = proposed.find((t) => t.id === change.taskId);
@@ -50,8 +60,13 @@ export function forecast(
   }
   target._directlyChanged = true;
 
-  // Propagate
-  forwardPass(proposed);
+  // Propagate — use full recompute when context is supplied so register-derived
+  // constraints and warning flags are preserved in the preview.
+  if (context?.externalDeps || context?.deliverables) {
+    recomputeSchedule(proposed, context.externalDeps, context.deliverables, context.today);
+  } else {
+    forwardPass(proposed);
+  }
   const newProjectFinish = computeCriticalPathAndFloat(proposed);
   const { breaches, risks } = detectConstraintIssues(proposed);
   const linkedSet = computeLinkedTasks(proposed, change.taskId);

@@ -34,9 +34,26 @@ export function App() {
     saveAppState(state);
   }, [state]);
 
+  const canUndo = state._past.length > 0;
+  const canRedo = state._future.length > 0;
+
   // Keyboard handlers — Escape closes modals/popovers/drawing/drawer in priority order
+  // Ctrl/Cmd+Z = undo, Ctrl/Cmd+Shift+Z = redo
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
+      // Undo / redo — ignore when focus is in a form element
+      const tag = (event.target as HTMLElement | null)?.tagName?.toLowerCase();
+      const isFormElement = tag === 'input' || tag === 'textarea' || tag === 'select';
+      if (!isFormElement && (event.ctrlKey || event.metaKey) && event.key === 'z') {
+        event.preventDefault();
+        if (event.shiftKey) {
+          dispatch({ type: 'redo' });
+        } else {
+          dispatch({ type: 'undo' });
+        }
+        return;
+      }
+
       if (event.key !== 'Escape') return;
       if (showSettings) {
         setShowSettings(false);
@@ -79,7 +96,7 @@ export function App() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [showSettings, showTaskModal, showRiskCreate, showExtDepCreate, showDeliverableCreate, state.view.drawerOpen, state.view.selectedDep]);
+  }, [showSettings, showTaskModal, showRiskCreate, showExtDepCreate, showDeliverableCreate, state.view.drawerOpen, state.view.selectedDep, dispatch]);
 
   // Initial hint
   useEffect(() => {
@@ -137,6 +154,10 @@ export function App() {
         onToggleCritical={() => dispatch({ type: 'toggleCritical' })}
         onBreachClick={handleBreachClick}
         onOpenSettings={() => setShowSettings(true)}
+        onUndo={() => dispatch({ type: 'undo' })}
+        onRedo={() => dispatch({ type: 'redo' })}
+        canUndo={canUndo}
+        canRedo={canRedo}
       >
         <main className="workspace single-pane">
           {state.view.mode === 'board' ? (

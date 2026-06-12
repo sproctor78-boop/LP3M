@@ -6,6 +6,7 @@
 // =============================================================================
 
 import {
+  AppDomainState,
   AppState,
   DependencyType,
   GroupBy,
@@ -24,6 +25,17 @@ import {
 } from '../engine/dependencyEngine';
 import { forecast } from '../engine/forecastEngine';
 import { recomputeSchedule } from '../engine/scheduleEngine';
+
+/** Build today's date string from local time (not UTC). */
+export function localToday(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Single recompute call used everywhere in the reducer — always passes full context. */
+function recompute(tasks: WorkItem[], domain: AppDomainState): WorkItem[] {
+  return recomputeSchedule(tasks, domain.externalDependencies, domain.deliverables, localToday());
+}
 
 export type AppAction =
   // View / chrome
@@ -113,19 +125,22 @@ export type AppAction =
   | { type: 'removeAcceptanceCriterion'; deliverableId: string; criterionId: string }
   | { type: 'reorderAcceptanceCriteria'; deliverableId: string; orderedIds: string[] }
   | { type: 'markCriterionMet'; deliverableId: string; criterionId: string }
-  | { type: 'markCriterionUnmet'; deliverableId: string; criterionId: string };
+  | { type: 'markCriterionUnmet'; deliverableId: string; criterionId: string }
+  // History
+  | { type: 'undo' }
+  | { type: 'redo' };
 
 function withRecomputedTasks(state: AppState, nextTasks: WorkItem[]): AppState {
   return {
     ...state,
     domain: {
       ...state.domain,
-      tasks: recomputeSchedule(nextTasks, state.domain.externalDependencies, state.domain.deliverables),
+      tasks: recompute(nextTasks, state.domain),
     },
   };
 }
 
-export function appReducer(state: AppState, action: AppAction): AppState {
+function appBaseReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     // ------- view / chrome -------
     case 'setViewMode':
@@ -190,11 +205,15 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     // ------- forecast lifecycle -------
     case 'previewTaskDates': {
-      const result = forecast(state.domain.tasks, {
-        taskId: action.taskId,
-        newStartDate: action.startDate,
-        newEndDate: action.endDate,
-      });
+      const result = forecast(
+        state.domain.tasks,
+        { taskId: action.taskId, newStartDate: action.startDate, newEndDate: action.endDate },
+        {
+          externalDeps: state.domain.externalDependencies,
+          deliverables: state.domain.deliverables,
+          today: localToday(),
+        },
+      );
       return {
         ...state,
         pendingForecast: result,
@@ -222,7 +241,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       const userEnd = userTarget?.endDate;
 
       // First recompute — does the engine respect the user's dates naturally?
-      recomputeSchedule(next);
+      recompute(next, state.domain);
 
       if (userTarget && userStart) {
         const after = next.find((t) => t.id === userTargetId);
@@ -232,7 +251,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
           after.constraint = { type: 'must_start_on', date: userStart, hard: true };
           after.startDate = userStart;
           if (userEnd) after.endDate = userEnd;
-          recomputeSchedule(next);
+          recompute(next, state.domain);
         } else if (
           after?.constraint?.type === 'must_start_on' &&
           after.constraint.hard &&
@@ -240,7 +259,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ) {
           // Engine accepted naturally — clear the pin if it's no longer needed.
           after.constraint = null;
-          recomputeSchedule(next);
+          recompute(next, state.domain);
         }
       }
 
@@ -319,7 +338,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
           dependencies: t.dependencies.filter((d) => !deletedIds.has(d.taskId)),
         }));
 
-      // Remove deleted IDs from ext-dep and deliverable linked-task lists.
+      // Remove deleted IDs from ext-dep, deliverable, and risk linked-task lists.
       const nextExtDeps = state.domain.externalDependencies.map((dep) => ({
         ...dep,
         linkedTaskIds: dep.linkedTaskIds.filter((id) => !deletedIds.has(id)),
@@ -328,8 +347,19 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ...del,
         linkedTaskIds: del.linkedTaskIds.filter((id) => !deletedIds.has(id)),
       }));
+      const nextRisks = state.domain.risks.map((r) => {
+        const filtered = r.linkedTaskIds.filter((id) => !deletedIds.has(id));
+        if (filtered.length === r.linkedTaskIds.length) return r;
+        return { ...r, linkedTaskIds: filtered, lastModifiedAt: new Date().toISOString() };
+      });
 
-      const recomputedTasks = recomputeSchedule(nextTasks, nextExtDeps, nextDeliverables);
+      const patchedDomain: AppDomainState = {
+        ...state.domain,
+        externalDependencies: nextExtDeps,
+        deliverables: nextDeliverables,
+        risks: nextRisks,
+      };
+      const recomputedTasks = recompute(nextTasks, patchedDomain);
       const newSelected =
         state.view.selectedTaskId && deletedIds.has(state.view.selectedTaskId)
           ? null
@@ -337,10 +367,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         domain: {
-          ...state.domain,
+          ...patchedDomain,
           tasks: recomputedTasks,
-          externalDependencies: nextExtDeps,
-          deliverables: nextDeliverables,
         },
         view: { ...state.view, selectedTaskId: newSelected, drawerOpen: newSelected !== null && state.view.drawerOpen },
       };
@@ -671,10 +699,16 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     }
     case 'removeDeliverable': {
       const deliverables = state.domain.deliverables.filter((d) => d.id !== action.deliverableId);
+      const removedId = action.deliverableId;
+      const risks = state.domain.risks.map((r) => {
+        const filtered = r.linkedDeliverableIds.filter((id) => id !== removedId);
+        if (filtered.length === r.linkedDeliverableIds.length) return r;
+        return { ...r, linkedDeliverableIds: filtered, lastModifiedAt: new Date().toISOString() };
+      });
       const newId = state.view.selectedDeliverableId === action.deliverableId ? null : state.view.selectedDeliverableId;
       return {
         ...state,
-        domain: { ...state.domain, deliverables },
+        domain: { ...state.domain, deliverables, risks },
         view: {
           ...state.view,
           selectedDeliverableId: newId,
@@ -779,6 +813,11 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, domain: { ...state.domain, deliverables } };
     }
 
+    case 'undo':
+    case 'redo':
+      // Handled by the outer appReducer wrapper before reaching here.
+      return state;
+
     default: {
       // Exhaustiveness check
       const _exhaustive: never = action;
@@ -786,4 +825,39 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return state;
     }
   }
+}
+
+const HISTORY_LIMIT = 50;
+
+export function appReducer(state: AppState, action: AppAction): AppState {
+  if (action.type === 'undo') {
+    if (state._past.length === 0) return state;
+    const [prev, ...restPast] = state._past;
+    return {
+      ...state,
+      domain: prev,
+      _past: restPast,
+      _future: [state.domain, ...state._future].slice(0, HISTORY_LIMIT),
+    };
+  }
+  if (action.type === 'redo') {
+    if (state._future.length === 0) return state;
+    const [next, ...restFuture] = state._future;
+    return {
+      ...state,
+      domain: next,
+      _past: [state.domain, ...state._past].slice(0, HISTORY_LIMIT),
+      _future: restFuture,
+    };
+  }
+
+  const next = appBaseReducer(state, action);
+  if (next.domain !== state.domain) {
+    return {
+      ...next,
+      _past: [state.domain, ...state._past].slice(0, HISTORY_LIMIT),
+      _future: [],
+    };
+  }
+  return { ...next, _past: state._past, _future: state._future };
 }

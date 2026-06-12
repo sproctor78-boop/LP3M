@@ -189,6 +189,8 @@ export function InspectorDrawer({
   } else if (showRiskCreate && onCreateRisk && onCloseRiskCreate) {
     body = (
       <RiskCreateForm
+        tasks={state.domain.tasks}
+        deliverables={state.domain.deliverables}
         onSave={onCreateRisk}
         onClose={onCloseRiskCreate}
       />

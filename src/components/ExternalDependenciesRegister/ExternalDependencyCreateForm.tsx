@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { DepStatus, ExternalDependency } from '../../domain/types';
 import { WorkItem } from '../../domain/types';
+import { LinkPicker } from '../common/LinkPicker';
 
 const ALL_STATUSES: DepStatus[] = ['OnTrack', 'AtRisk', 'Late', 'Received'];
 const STATUS_LABELS: Record<DepStatus, string> = {
@@ -62,11 +63,7 @@ export function ExternalDependencyCreateForm({ tasks, onSave, onClose }: Props) 
     setTitleError(false);
   };
 
-  const toggleTask = (taskId: string) => {
-    setLinkedTaskIds((prev) =>
-      prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId],
-    );
-  };
+  const taskItems = tasks.filter((t) => !t.isParent).map((t) => ({ id: t.id, label: t.title }));
 
   return (
     <div className="risk-create-form">
@@ -155,21 +152,14 @@ export function ExternalDependencyCreateForm({ tasks, onSave, onClose }: Props) 
       <div className="risk-create-section">
         <div className="risk-create-section-title">Linked Tasks</div>
         <div className="detail-label" style={{ marginBottom: 6 }}>
-          Select tasks blocked or constrained by this dependency
+          Tasks blocked or constrained by this dependency
         </div>
-        <div className="ext-dep-task-picker">
-          {tasks.filter((t) => !t.isParent).map((t) => (
-            <label key={t.id} className="ext-dep-task-option">
-              <input
-                type="checkbox"
-                checked={linkedTaskIds.includes(t.id)}
-                onChange={() => toggleTask(t.id)}
-              />
-              <span className="risk-grid-id">{t.id}</span>
-              <span>{t.title}</span>
-            </label>
-          ))}
-        </div>
+        <LinkPicker
+          items={taskItems}
+          selected={linkedTaskIds}
+          onChange={setLinkedTaskIds}
+          placeholder="Search tasks…"
+        />
       </div>
 
       {/* Notes */}

@@ -12,6 +12,10 @@ interface Props {
   onToggleCritical: () => void;
   onBreachClick?: () => void;
   onOpenSettings: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 const BASE_VIEW_MODES: { key: ViewMode; label: string }[] = [
@@ -30,6 +34,10 @@ export function AppShell({
   onToggleCritical,
   onBreachClick,
   onOpenSettings,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
 }: Props) {
   const handleExport = () => {
     downloadJsonExport(state.domain);
@@ -74,6 +82,32 @@ export function AppShell({
         </div>
 
         <div className="header-actions">
+          <button
+            type="button"
+            className="btn"
+            onClick={onUndo}
+            disabled={!canUndo}
+            title="Undo (Ctrl+Z)"
+            aria-label="Undo"
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M3 7 C3 4.5 5.5 2.5 8 2.5 C10.8 2.5 13 4.7 13 7.5 C13 10.3 10.8 12.5 8 12.5 L5.5 12.5" strokeLinecap="round" />
+              <path d="M2 5l1 2 2-1" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={onRedo}
+            disabled={!canRedo}
+            title="Redo (Ctrl+Shift+Z)"
+            aria-label="Redo"
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M13 7 C13 4.5 10.5 2.5 8 2.5 C5.2 2.5 3 4.7 3 7.5 C3 10.3 5.2 12.5 8 12.5 L10.5 12.5" strokeLinecap="round" />
+              <path d="M14 5l-1 2-2-1" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
           <button
             type="button"
             className={`btn ${state.view.showCritical ? 'active' : ''}`}
