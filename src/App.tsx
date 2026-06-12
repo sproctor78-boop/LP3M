@@ -18,6 +18,10 @@ import { Legend } from './components/Legend/Legend';
 import { TaskCreatorModal } from './components/Modals/TaskCreatorModal';
 import { SettingsModal } from './components/Modals/SettingsModal';
 import { Hint, showHint } from './components/Toasts/Hint';
+import { CommandPalette } from './components/common/CommandPalette';
+import { RiskCreateInitialValues } from './components/RiskRegister/RiskCreateForm';
+import { ExtDepCreateInitialValues } from './components/ExternalDependenciesRegister/ExternalDependencyCreateForm';
+import { DeliverableCreateInitialValues } from './components/DeliverablesRegister/DeliverableCreateForm';
 
 export function App() {
   const [state, dispatch] = useReducer(appReducer, undefined, loadAppState);
@@ -27,6 +31,10 @@ export function App() {
   const [showRiskCreate, setShowRiskCreate] = useState(false);
   const [showExtDepCreate, setShowExtDepCreate] = useState(false);
   const [showDeliverableCreate, setShowDeliverableCreate] = useState(false);
+  const [showPalette, setShowPalette] = useState(false);
+  const [riskCreateInitialValues, setRiskCreateInitialValues] = useState<RiskCreateInitialValues | undefined>();
+  const [extDepCreateInitialValues, setExtDepCreateInitialValues] = useState<ExtDepCreateInitialValues | undefined>();
+  const [deliverableCreateInitialValues, setDeliverableCreateInitialValues] = useState<DeliverableCreateInitialValues | undefined>();
   const breachCycleRef = useRef(0);
 
   // Persist on every state change (excluding pendingForecast — handled by adapter)
@@ -53,8 +61,17 @@ export function App() {
         }
         return;
       }
+      if (!isFormElement && (event.ctrlKey || event.metaKey) && event.key === 'k') {
+        event.preventDefault();
+        setShowPalette((p) => !p);
+        return;
+      }
 
       if (event.key !== 'Escape') return;
+      if (showPalette) {
+        setShowPalette(false);
+        return;
+      }
       if (showSettings) {
         setShowSettings(false);
         return;
@@ -96,7 +113,7 @@ export function App() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [showSettings, showTaskModal, showRiskCreate, showExtDepCreate, showDeliverableCreate, state.view.drawerOpen, state.view.selectedDep, dispatch]);
+  }, [showPalette, showSettings, showTaskModal, showRiskCreate, showExtDepCreate, showDeliverableCreate, state.view.drawerOpen, state.view.selectedDep, dispatch]);
 
   // Initial hint
   useEffect(() => {
@@ -319,26 +336,32 @@ export function App() {
         showDeliverableCreate={showDeliverableCreate}
         selectedDeliverable={selectedDeliverable}
         today={today}
+        riskCreateInitialValues={riskCreateInitialValues}
         onCreateRisk={(risk) => {
           dispatch({ type: 'createRisk', risk });
+          setRiskCreateInitialValues(undefined);
           showHint(`Risk ${risk.id} created`);
         }}
-        onCloseRiskCreate={() => setShowRiskCreate(false)}
+        onCloseRiskCreate={() => { setShowRiskCreate(false); setRiskCreateInitialValues(undefined); }}
+        extDepCreateInitialValues={extDepCreateInitialValues}
         onCreateExtDep={(dep) => {
           dispatch({ type: 'addExternalDependency', dep });
+          setExtDepCreateInitialValues(undefined);
           showHint(`Dependency ${dep.id} created`);
         }}
-        onCloseExtDepCreate={() => setShowExtDepCreate(false)}
+        onCloseExtDepCreate={() => { setShowExtDepCreate(false); setExtDepCreateInitialValues(undefined); }}
         onUpdateExtDep={(depId, patch) => dispatch({ type: 'updateExternalDependency', depId, patch })}
         onRemoveExtDep={(depId) => {
           dispatch({ type: 'removeExternalDependency', depId });
           showHint('External dependency removed');
         }}
+        deliverableCreateInitialValues={deliverableCreateInitialValues}
         onCreateDeliverable={(deliverable) => {
           dispatch({ type: 'addDeliverable', deliverable });
+          setDeliverableCreateInitialValues(undefined);
           showHint(`Deliverable ${deliverable.id} created`);
         }}
-        onCloseDeliverableCreate={() => setShowDeliverableCreate(false)}
+        onCloseDeliverableCreate={() => { setShowDeliverableCreate(false); setDeliverableCreateInitialValues(undefined); }}
         onUpdateDeliverable={(deliverableId, patch) =>
           dispatch({ type: 'updateDeliverable', deliverableId, patch })
         }
@@ -473,6 +496,29 @@ export function App() {
             dispatch({ type: 'setWorkingCalendar', highlightWeekends, holidays });
             setShowSettings(false);
             showHint('Settings saved');
+          }}
+        />
+      ) : null}
+
+      {showPalette ? (
+        <CommandPalette
+          tasks={state.domain.tasks}
+          onClose={() => setShowPalette(false)}
+          dispatch={dispatch}
+          onOpenCreateForm={(kind, title, linkedTaskIds) => {
+            if (kind === 'task') {
+              setTaskModalParent(null);
+              setShowTaskModal(true);
+            } else if (kind === 'risk') {
+              setRiskCreateInitialValues({ title, linkedTaskIds });
+              setShowRiskCreate(true);
+            } else if (kind === 'dep') {
+              setExtDepCreateInitialValues({ title, linkedTaskIds });
+              setShowExtDepCreate(true);
+            } else if (kind === 'del') {
+              setDeliverableCreateInitialValues({ title, linkedTaskIds });
+              setShowDeliverableCreate(true);
+            }
           }}
         />
       ) : null}

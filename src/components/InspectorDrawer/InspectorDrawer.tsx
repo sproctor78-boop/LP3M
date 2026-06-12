@@ -2,11 +2,11 @@ import { AcceptanceCriterion, AppState, Deliverable, DeliverableStatus, External
 import { TaskInspector } from './TaskInspector';
 import { ImpactPanel } from './ImpactPanel';
 import { RiskInspector } from '../RiskRegister/RiskInspector';
-import { RiskCreateForm } from '../RiskRegister/RiskCreateForm';
+import { RiskCreateForm, RiskCreateInitialValues } from '../RiskRegister/RiskCreateForm';
 import { RaidActionInspector } from './RaidActionInspector';
-import { ExternalDependencyCreateForm } from '../ExternalDependenciesRegister/ExternalDependencyCreateForm';
+import { ExternalDependencyCreateForm, ExtDepCreateInitialValues } from '../ExternalDependenciesRegister/ExternalDependencyCreateForm';
 import { ExternalDependencyInspector } from '../ExternalDependenciesRegister/ExternalDependencyInspector';
-import { DeliverableCreateForm } from '../DeliverablesRegister/DeliverableCreateForm';
+import { DeliverableCreateForm, DeliverableCreateInitialValues } from '../DeliverablesRegister/DeliverableCreateForm';
 import { DeliverableInspector } from '../DeliverablesRegister/DeliverableInspector';
 
 interface Props {
@@ -39,10 +39,12 @@ interface Props {
   // Risk creation
   wide?: boolean;
   showRiskCreate?: boolean;
+  riskCreateInitialValues?: RiskCreateInitialValues;
   onCreateRisk?: (risk: Risk) => void;
   onCloseRiskCreate?: () => void;
   // External dependency create/edit
   showExtDepCreate?: boolean;
+  extDepCreateInitialValues?: ExtDepCreateInitialValues;
   selectedExtDep?: ExternalDependency | null;
   onCreateExtDep?: (dep: ExternalDependency) => void;
   onCloseExtDepCreate?: () => void;
@@ -50,6 +52,7 @@ interface Props {
   onRemoveExtDep?: (depId: string) => void;
   // Deliverable create/edit
   showDeliverableCreate?: boolean;
+  deliverableCreateInitialValues?: DeliverableCreateInitialValues;
   selectedDeliverable?: Deliverable | null;
   onCreateDeliverable?: (deliverable: Deliverable) => void;
   onCloseDeliverableCreate?: () => void;
@@ -94,15 +97,18 @@ export function InspectorDrawer({
   onCompleteRaidAction,
   wide,
   showRiskCreate,
+  riskCreateInitialValues,
   onCreateRisk,
   onCloseRiskCreate,
   showExtDepCreate,
+  extDepCreateInitialValues,
   selectedExtDep,
   onCreateExtDep,
   onCloseExtDepCreate,
   onUpdateExtDep,
   onRemoveExtDep,
   showDeliverableCreate,
+  deliverableCreateInitialValues,
   selectedDeliverable,
   onCreateDeliverable,
   onCloseDeliverableCreate,
@@ -157,6 +163,7 @@ export function InspectorDrawer({
         tasks={state.domain.tasks}
         onSave={onCreateDeliverable}
         onClose={onCloseDeliverableCreate}
+        initialValues={deliverableCreateInitialValues}
       />
     );
   } else if (selectedDeliverable && onUpdateDeliverable && onSetDeliverableStatus && onRemoveDeliverable
@@ -184,6 +191,7 @@ export function InspectorDrawer({
         tasks={state.domain.tasks}
         onSave={onCreateExtDep}
         onClose={onCloseExtDepCreate}
+        initialValues={extDepCreateInitialValues}
       />
     );
   } else if (showRiskCreate && onCreateRisk && onCloseRiskCreate) {
@@ -193,6 +201,7 @@ export function InspectorDrawer({
         deliverables={state.domain.deliverables}
         onSave={onCreateRisk}
         onClose={onCloseRiskCreate}
+        initialValues={riskCreateInitialValues}
       />
     );
   } else if (selectedExtDep && onUpdateExtDep && onRemoveExtDep) {

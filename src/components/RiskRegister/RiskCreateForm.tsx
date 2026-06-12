@@ -38,15 +38,21 @@ function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+export interface RiskCreateInitialValues {
+  title?: string;
+  linkedTaskIds?: string[];
+}
+
 interface Props {
   tasks: WorkItem[];
   deliverables: Deliverable[];
   onSave: (risk: Risk) => void;
   onClose: () => void;
+  initialValues?: RiskCreateInitialValues;
 }
 
-export function RiskCreateForm({ tasks, deliverables, onSave, onClose }: Props) {
-  const [title, setTitle] = useState('');
+export function RiskCreateForm({ tasks, deliverables, onSave, onClose, initialValues }: Props) {
+  const [title, setTitle] = useState(initialValues?.title ?? '');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<RiskCategory>('Technical');
   const [owner, setOwner] = useState('');
@@ -59,7 +65,7 @@ export function RiskCreateForm({ tasks, deliverables, onSave, onClose }: Props) 
   const [optimistic, setOptimistic] = useState(0);
   const [mostLikely, setMostLikely] = useState(0);
   const [pessimistic, setPessimistic] = useState(0);
-  const [linkedTaskIds, setLinkedTaskIds] = useState<string[]>([]);
+  const [linkedTaskIds, setLinkedTaskIds] = useState<string[]>(initialValues?.linkedTaskIds ?? []);
   const [linkedDeliverableIds, setLinkedDeliverableIds] = useState<string[]>([]);
   const [titleError, setTitleError] = useState(false);
 

@@ -128,6 +128,9 @@ export type AppAction =
   | { type: 'markCriterionUnmet'; deliverableId: string; criterionId: string }
   // Signals rail
   | { type: 'setSignalsRailOpen'; value: boolean }
+  // Batch — reduces sub-actions sequentially within a single undo step.
+  // Nesting flattens automatically. 'undo'/'redo' are not valid sub-actions.
+  | { type: 'batch'; actions: AppAction[] }
   // History
   | { type: 'undo' }
   | { type: 'redo' };
@@ -817,6 +820,17 @@ function appBaseReducer(state: AppState, action: AppAction): AppState {
 
     case 'setSignalsRailOpen':
       return { ...state, view: { ...state.view, signalsRailOpen: action.value } };
+
+    case 'batch': {
+      // Flatten nested batches; exclude undo/redo sub-actions.
+      const flat = action.actions.flatMap((a) =>
+        a.type === 'batch' ? a.actions : [a],
+      ).filter((a) => a.type !== 'undo' && a.type !== 'redo');
+      return flat.reduce(
+        (s, a) => appBaseReducer(s, a as AppAction),
+        state,
+      );
+    }
 
     case 'undo':
     case 'redo':
