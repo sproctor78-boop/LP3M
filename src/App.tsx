@@ -287,6 +287,7 @@ export function App() {
               }
               showImpactStrip={!!state.pendingForecast && !state.view.drawerOpen}
               onClearScrollToTask={() => dispatch({ type: 'setScrollToTask', taskId: null })}
+              dispatch={dispatch}
             />
           )}
         </main>

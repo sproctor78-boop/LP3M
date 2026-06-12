@@ -250,9 +250,11 @@
   margin-bottom: 2px;
 }
 
-.rip-signal-card-category--risk    { color: var(--breach); }
-.rip-signal-card-category--dep     { color: var(--forecast); }
-.rip-signal-card-category--gate    { color: #0f766e; }
+.rip-signal-card-category--risk     { color: var(--breach); }
+.rip-signal-card-category--dep      { color: var(--forecast); }
+.rip-signal-card-category--gate     { color: #0f766e; }
+.rip-signal-card-category--breach   { color: var(--breach); }
+.rip-signal-card-category--forecast { color: var(--forecast); }
 
 .rip-signal-card-body {
   font-size: 12px;

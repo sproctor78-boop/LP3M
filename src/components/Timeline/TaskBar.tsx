@@ -3,6 +3,8 @@ import { WorkItem } from '../../domain/types';
 import { diffDays } from '../../engine/dateUtils';
 import { useBarDrag, DragMode } from './useBarDrag';
 import { DepHandleSide, useDepHandleDrag, DrawingState } from './useDepHandleDrag';
+import { TaskBadges, BadgeClickPayload } from './TaskBadges';
+import { RiskBadge, DepBadge, GateBadge } from '../../state/selectors';
 
 interface Props {
   task: WorkItem;
@@ -30,6 +32,13 @@ interface Props {
   onCreateDependency?: (fromId: string, toId: string, side: DepHandleSide) => void;
   /** Dep handle drag: update preview line. */
   onDepDrawingChange?: (drawing: DrawingState | null) => void;
+  /** Register badges to render at right end of bar. */
+  riskBadge?: RiskBadge | null;
+  depBadge?: DepBadge | null;
+  gateBadge?: GateBadge | null;
+  onBadgeHover?: (payload: BadgeClickPayload) => void;
+  onBadgeLeave?: () => void;
+  onBadgeClick?: (payload: BadgeClickPayload) => void;
 }
 
 export function TaskBar({
@@ -51,6 +60,12 @@ export function TaskBar({
   isInvalidDepTarget,
   onCreateDependency,
   onDepDrawingChange,
+  riskBadge,
+  depBadge,
+  gateBadge,
+  onBadgeHover,
+  onBadgeLeave,
+  onBadgeClick,
 }: Props) {
   const widthDays = Math.max(1, diffDays(task.startDate, task.endDate) + 1);
   const widthPx = Math.max(8, widthDays * dayWidth - 2);
@@ -151,6 +166,18 @@ export function TaskBar({
           </svg>
         ) : null}
       </span>
+      {!ghost && (riskBadge || depBadge || gateBadge) ? (
+        <TaskBadges
+          taskId={task.id}
+          risk={riskBadge ?? null}
+          dep={depBadge ?? null}
+          gate={gateBadge ?? null}
+          barWidth={widthPx}
+          onHover={onBadgeHover ?? (() => {})}
+          onLeave={onBadgeLeave ?? (() => {})}
+          onClick={onBadgeClick ?? (() => {})}
+        />
+      ) : null}
       {!ghost ? <div className="bar-handle right" /> : null}
       {!ghost ? (
         <>

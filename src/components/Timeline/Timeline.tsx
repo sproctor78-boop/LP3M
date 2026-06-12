@@ -1,10 +1,16 @@
-import { CSSProperties, useEffect, useRef, useState } from 'react';
+import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AppState,
   DependencyType,
   GroupBy,
   WorkItem,
 } from '../../domain/types';
+import { AppAction } from '../../state/appState';
+import { getTaskBadges } from '../../state/selectors';
+import { BadgeClickPayload } from './TaskBadges';
+import { HoverCard } from './HoverCard';
+import { PopoverEdit } from './PopoverEdit';
+import { SignalsRail } from './SignalsRail';
 import {
   addDays,
   diffDays,
@@ -62,6 +68,7 @@ interface Props {
   onSelectDeliverable: (deliverableId: string) => void;
   showImpactStrip: boolean;
   onClearScrollToTask?: () => void;
+  dispatch: (action: AppAction) => void;
 }
 
 interface DepPopoverState {
@@ -100,6 +107,7 @@ export function Timeline({
   onSelectDeliverable,
   showImpactStrip,
   onClearScrollToTask,
+  dispatch,
 }: Props) {
   const ganttScrollRef = useRef<HTMLDivElement | null>(null);
   const taskListScrollRef = useRef<HTMLDivElement | null>(null);
@@ -107,6 +115,54 @@ export function Timeline({
 
   const [drawing, setDrawing] = useState<DrawingState | null>(null);
   const [depPopover, setDepPopover] = useState<DepPopoverState | null>(null);
+
+  // Badge overlay state
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [hoverCard, setHoverCard] = useState<BadgeClickPayload & { rect: DOMRect } | null>(null);
+  const [popoverState, setPopoverState] = useState<{ type: BadgeClickPayload['type']; entityId: string; rect: DOMRect } | null>(null);
+
+  // Badge map: memoized per task
+  const badgeMap = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof getTaskBadges>>();
+    const tasks = state.pendingForecast ? state.pendingForecast.proposedTasks : state.domain.tasks;
+    for (const t of tasks) {
+      const b = getTaskBadges(t.id, state.domain);
+      if (b.risk || b.dep || b.gate) map.set(t.id, b);
+    }
+    return map;
+  }, [state.domain, state.pendingForecast]);
+
+  const handleBadgeHover = (payload: BadgeClickPayload) => {
+    if (hoverTimerRef.current != null) clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = setTimeout(() => {
+      setHoverCard({ ...payload, rect: payload.rect });
+    }, 150);
+  };
+  const handleBadgeLeave = () => {
+    if (hoverTimerRef.current != null) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; }
+    // Don't close immediately — allow moving mouse into the hovercard itself
+  };
+  const handleBadgeClick = (payload: BadgeClickPayload) => {
+    if (hoverTimerRef.current != null) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; }
+    setHoverCard(null);
+    // Find first entityId for this type+task
+    const domain = state.domain;
+    let entityId: string | undefined;
+    if (payload.type === 'risk') {
+      entityId = domain.risks.find((r) => r.linkedTaskIds.includes(payload.taskId) && r.status !== 'Closed')?.id;
+    } else if (payload.type === 'dep') {
+      entityId = domain.externalDependencies.find((d) => d.linkedTaskIds.includes(payload.taskId))?.id;
+    } else if (payload.type === 'gate') {
+      entityId = domain.deliverables.find((d) => d.linkedTaskIds.includes(payload.taskId))?.id;
+    }
+    if (entityId) setPopoverState({ type: payload.type, entityId, rect: payload.rect });
+  };
+  const handleEditEntity = (type: 'risk' | 'dep' | 'gate', entityId: string) => {
+    setHoverCard(null);
+    // Use a placeholder rect near centre of screen if no rect available
+    const rect = new DOMRect(window.innerWidth / 2 - 180, window.innerHeight / 3, 0, 0);
+    setPopoverState({ type, entityId, rect });
+  };
 
   const window_ = computeTimelineWindow(state);
   const layout = computeTimelineLayout(state);
@@ -238,6 +294,7 @@ export function Timeline({
       const displayTask = proposed ?? task;
       const breach = fc?.constraintBreaches.find((b) => b.taskId === task.id);
       const left = xOf(displayTask.startDate);
+      const milestoneBadges = badgeMap.get(task.id);
       barNode = (
         <MilestoneBar
           task={displayTask}
@@ -245,6 +302,12 @@ export function Timeline({
           dayWidth={dayWidth}
           breach={!!breach}
           onSelect={() => onSelectTask(task.id)}
+          riskBadge={milestoneBadges?.risk}
+          depBadge={milestoneBadges?.dep}
+          gateBadge={milestoneBadges?.gate}
+          onBadgeHover={handleBadgeHover}
+          onBadgeLeave={handleBadgeLeave}
+          onBadgeClick={handleBadgeClick}
         />
       );
     } else {
@@ -271,6 +334,7 @@ export function Timeline({
       ) : null;
 
       const displayTask = proposed ?? task;
+      const taskBadges = badgeMap.get(task.id);
       const bar = (
         <TaskBar
           key={task.id}
@@ -297,6 +361,12 @@ export function Timeline({
             showHint(`New link: ${fromId} → ${toId}`);
           }}
           onDepDrawingChange={setDrawing}
+          riskBadge={taskBadges?.risk}
+          depBadge={taskBadges?.dep}
+          gateBadge={taskBadges?.gate}
+          onBadgeHover={handleBadgeHover}
+          onBadgeLeave={handleBadgeLeave}
+          onBadgeClick={handleBadgeClick}
         />
       );
 
@@ -367,7 +437,7 @@ export function Timeline({
     (raidBandVisible ? RAID_BAND_HEIGHT + 8 : 0);
 
   return (
-    <section className="timeline-panel">
+    <section className="timeline-panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
       <div className="timeline-toolbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button
@@ -471,7 +541,8 @@ export function Timeline({
         </div>
       </div>
 
-      <div className="timeline-body">
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div className="timeline-body" style={{ flex: 1, overflow: 'hidden' }}>
         <TaskListPanel
           ref={taskListScrollRef}
           layout={layout}
@@ -485,6 +556,10 @@ export function Timeline({
           onUpdatePercent={(taskId, percent) =>
             onUpdateTask(taskId, { percentComplete: percent })
           }
+          badgeMap={badgeMap}
+          onBadgeHover={handleBadgeHover}
+          onBadgeLeave={handleBadgeLeave}
+          onBadgeClick={handleBadgeClick}
         />
         <Splitter width={state.view.taskListWidth} onWidthChange={onSetTaskListWidth} />
         <div className="gantt-area">
@@ -623,6 +698,55 @@ export function Timeline({
           </div>
         </div>
       </div>
+
+      <SignalsRail
+        domain={state.domain}
+        open={state.view.signalsRailOpen}
+        onToggle={() => dispatch({ type: 'setSignalsRailOpen', value: !state.view.signalsRailOpen })}
+        dispatch={dispatch}
+        onEditEntity={handleEditEntity}
+      />
+      </div>
+
+      {/* Hovercard overlay */}
+      {hoverCard ? (
+        <HoverCard
+          type={hoverCard.type}
+          taskId={hoverCard.taskId}
+          anchorRect={hoverCard.rect}
+          domain={state.domain}
+          onClose={() => setHoverCard(null)}
+          onEdit={(entityId) => {
+            setHoverCard(null);
+            setPopoverState({ type: hoverCard.type, entityId, rect: hoverCard.rect });
+          }}
+          onOpenRegister={(entityId) => {
+            setHoverCard(null);
+            if (hoverCard.type === 'risk') {
+              dispatch({ type: 'setViewMode', mode: 'riskRegister' });
+              dispatch({ type: 'selectRisk', riskId: entityId, openDrawer: true });
+            } else if (hoverCard.type === 'dep') {
+              dispatch({ type: 'setViewMode', mode: 'extDepRegister' });
+              dispatch({ type: 'selectExtDep', depId: entityId, openDrawer: true });
+            } else if (hoverCard.type === 'gate') {
+              dispatch({ type: 'setViewMode', mode: 'deliverableRegister' });
+              dispatch({ type: 'selectDeliverable', deliverableId: entityId, openDrawer: true });
+            }
+          }}
+        />
+      ) : null}
+
+      {/* Popover overlay */}
+      {popoverState ? (
+        <PopoverEdit
+          type={popoverState.type}
+          entityId={popoverState.entityId}
+          anchorRect={popoverState.rect}
+          domain={state.domain}
+          dispatch={dispatch}
+          onClose={() => setPopoverState(null)}
+        />
+      ) : null}
 
       {drawing ? (
         <svg className={`drawing-line ${drawing.invalid ? 'invalid' : ''}`}>

@@ -174,6 +174,8 @@ export interface AppViewState {
   deliverablesVisibleInTimeline: boolean;
   /** ID of the currently selected deliverable, or null. */
   selectedDeliverableId: string | null;
+  /** When true, the Signals rail is shown on the Timeline view. */
+  signalsRailOpen: boolean;
 }
 
 export interface TaskMovement {
