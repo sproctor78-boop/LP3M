@@ -1,6 +1,7 @@
 import React, { Component, ReactNode } from 'react';
 import ReactDOM from 'react-dom/client';
 import './styles/global.css';
+import './styles/surface.css';
 import { App } from './App';
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {

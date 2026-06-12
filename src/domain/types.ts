@@ -236,6 +236,10 @@ export interface AppState {
   view: AppViewState;
   pendingForecast: ForecastResult | null;
   pendingChange: ProposedChange | null;
+  /** Undo stack — never persisted. */
+  _past: AppDomainState[];
+  /** Redo stack — never persisted. */
+  _future: AppDomainState[];
 }
 
 export interface TimelineWindow {
