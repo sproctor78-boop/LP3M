@@ -22,7 +22,7 @@ export interface RiskBadge {
  */
 export function getTaskRiskBadge(taskId: string, domain: AppDomainState): RiskBadge | null {
   const linked = domain.risks.filter(
-    (r) => r.linkedTaskIds.includes(taskId) && r.status !== 'Closed',
+    (r) => (r.linkedTaskIds ?? []).includes(taskId) && r.status !== 'Closed',
   );
   if (linked.length === 0) return null;
   const highest = linked.reduce((best, r) =>
@@ -50,7 +50,7 @@ export interface DepBadge {
  * best). Returns null if none link to this task.
  */
 export function getTaskDepBadge(taskId: string, domain: AppDomainState): DepBadge | null {
-  const linked = domain.externalDependencies.filter((d) => d.linkedTaskIds.includes(taskId));
+  const linked = domain.externalDependencies.filter((d) => (d.linkedTaskIds ?? []).includes(taskId));
   if (linked.length === 0) return null;
   let worstIdx = DEP_SEVERITY.length - 1;
   for (const d of linked) {
@@ -78,7 +78,7 @@ export interface GateBadge {
 export function getTaskGateBadge(taskId: string, domain: AppDomainState): GateBadge | null {
   const task = domain.tasks.find((t) => t.id === taskId);
   if (!task?.isMilestone) return null;
-  const linked = domain.deliverables.filter((d) => d.linkedTaskIds.includes(taskId));
+  const linked = domain.deliverables.filter((d) => (d.linkedTaskIds ?? []).includes(taskId));
   if (linked.length === 0) return null;
   let criteriaMet = 0;
   let criteriaTotal = 0;
