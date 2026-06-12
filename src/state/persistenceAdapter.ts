@@ -47,6 +47,7 @@ export function createInitialAppState(): AppState {
       selectedExtDepId: null,
       deliverablesVisibleInTimeline: false,
       selectedDeliverableId: null,
+      signalsRailOpen: true,
     },
     pendingForecast: null,
     pendingChange: null,
@@ -106,6 +107,8 @@ function migrateView(view: AppState['view']): AppState['view'] {
       : false;
   const selectedDeliverableId =
     typeof raw.selectedDeliverableId === 'string' ? raw.selectedDeliverableId : null;
+  const signalsRailOpen =
+    typeof raw.signalsRailOpen === 'boolean' ? raw.signalsRailOpen : true;
   return {
     ...view,
     mode,
@@ -120,6 +123,7 @@ function migrateView(view: AppState['view']): AppState['view'] {
     selectedExtDepId,
     deliverablesVisibleInTimeline,
     selectedDeliverableId,
+    signalsRailOpen,
   };
 }
 

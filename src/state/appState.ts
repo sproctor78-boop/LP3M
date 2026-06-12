@@ -126,6 +126,8 @@ export type AppAction =
   | { type: 'reorderAcceptanceCriteria'; deliverableId: string; orderedIds: string[] }
   | { type: 'markCriterionMet'; deliverableId: string; criterionId: string }
   | { type: 'markCriterionUnmet'; deliverableId: string; criterionId: string }
+  // Signals rail
+  | { type: 'setSignalsRailOpen'; value: boolean }
   // History
   | { type: 'undo' }
   | { type: 'redo' };
@@ -812,6 +814,9 @@ function appBaseReducer(state: AppState, action: AppAction): AppState {
       });
       return { ...state, domain: { ...state.domain, deliverables } };
     }
+
+    case 'setSignalsRailOpen':
+      return { ...state, view: { ...state.view, signalsRailOpen: action.value } };
 
     case 'undo':
     case 'redo':

@@ -10,6 +10,8 @@ import React, { ForwardedRef, forwardRef, useState } from 'react';
 import { WorkItem } from '../../domain/types';
 import { formatShort } from '../../engine/dateUtils';
 import { LayoutGroup } from './layoutEngine';
+import { TaskBadges, BadgeClickPayload } from './TaskBadges';
+import { TaskBadges as TaskBadgesData } from '../../state/selectors';
 
 interface Props {
   layout: { groups: LayoutGroup[]; totalHeight: number };
@@ -21,6 +23,10 @@ interface Props {
   onToggleGroupCollapse: (key: string) => void;
   onToggleParent: (taskId: string) => void;
   onUpdatePercent: (taskId: string, percent: number) => void;
+  badgeMap?: Map<string, TaskBadgesData>;
+  onBadgeHover?: (payload: BadgeClickPayload) => void;
+  onBadgeLeave?: () => void;
+  onBadgeClick?: (payload: BadgeClickPayload) => void;
 }
 
 const HEADER_HEIGHT = 52; // matches TOTAL_HEADER_HEIGHT in layoutEngine
@@ -36,6 +42,10 @@ export const TaskListPanel = forwardRef(function TaskListPanel(
     onToggleGroupCollapse,
     onToggleParent,
     onUpdatePercent,
+    badgeMap,
+    onBadgeHover,
+    onBadgeLeave,
+    onBadgeClick,
   }: Props,
   scrollRef: ForwardedRef<HTMLDivElement>,
 ) {
@@ -103,6 +113,10 @@ export const TaskListPanel = forwardRef(function TaskListPanel(
                     onSelect={() => onSelectTask(row.taskId)}
                     onToggleParent={() => onToggleParent(row.taskId)}
                     onUpdatePercent={(percent) => onUpdatePercent(row.taskId, percent)}
+                    badges={badgeMap?.get(row.taskId)}
+                    onBadgeHover={onBadgeHover}
+                    onBadgeLeave={onBadgeLeave}
+                    onBadgeClick={onBadgeClick}
                   />
                 ))
               )}
@@ -124,6 +138,10 @@ interface RowProps {
   onSelect: () => void;
   onToggleParent: () => void;
   onUpdatePercent: (percent: number) => void;
+  badges?: TaskBadgesData;
+  onBadgeHover?: (payload: BadgeClickPayload) => void;
+  onBadgeLeave?: () => void;
+  onBadgeClick?: (payload: BadgeClickPayload) => void;
 }
 
 function TaskListRow({
@@ -136,6 +154,10 @@ function TaskListRow({
   onSelect,
   onToggleParent,
   onUpdatePercent,
+  badges,
+  onBadgeHover,
+  onBadgeLeave,
+  onBadgeClick,
 }: RowProps) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(String(task.percentComplete));
@@ -198,6 +220,18 @@ function TaskListRow({
         <span className="task-list-name" title={task.title}>
           {task.title}
         </span>
+        {badges && (badges.risk || badges.dep || badges.gate) ? (
+          <TaskBadges
+            taskId={task.id}
+            risk={badges.risk}
+            dep={badges.dep}
+            gate={badges.gate}
+            small
+            onHover={onBadgeHover ?? (() => {})}
+            onLeave={onBadgeLeave ?? (() => {})}
+            onClick={onBadgeClick ?? (() => {})}
+          />
+        ) : null}
         {task.color ? (
           <span
             className="task-list-color-chip"

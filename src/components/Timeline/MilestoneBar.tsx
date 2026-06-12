@@ -1,4 +1,6 @@
 import { WorkItem } from '../../domain/types';
+import { TaskBadges, BadgeClickPayload } from './TaskBadges';
+import { RiskBadge, DepBadge, GateBadge } from '../../state/selectors';
 
 interface Props {
   task: WorkItem;
@@ -6,9 +8,15 @@ interface Props {
   dayWidth: number;
   breach?: boolean;
   onSelect: () => void;
+  riskBadge?: RiskBadge | null;
+  depBadge?: DepBadge | null;
+  gateBadge?: GateBadge | null;
+  onBadgeHover?: (payload: BadgeClickPayload) => void;
+  onBadgeLeave?: () => void;
+  onBadgeClick?: (payload: BadgeClickPayload) => void;
 }
 
-export function MilestoneBar({ task, left, dayWidth, breach, onSelect }: Props) {
+export function MilestoneBar({ task, left, dayWidth, breach, onSelect, riskBadge, depBadge, gateBadge, onBadgeHover, onBadgeLeave, onBadgeClick }: Props) {
   const x = left + dayWidth / 2;
   const classes = ['milestone'];
   if (task.locked) classes.push('locked');
@@ -36,6 +44,17 @@ export function MilestoneBar({ task, left, dayWidth, breach, onSelect }: Props) 
         ) : null}
       </svg>
       <span className="milestone-label">{task.title}</span>
+      {(riskBadge || depBadge || gateBadge) ? (
+        <TaskBadges
+          taskId={task.id}
+          risk={riskBadge ?? null}
+          dep={depBadge ?? null}
+          gate={gateBadge ?? null}
+          onHover={onBadgeHover ?? (() => {})}
+          onLeave={onBadgeLeave ?? (() => {})}
+          onClick={onBadgeClick ?? (() => {})}
+        />
+      ) : null}
     </div>
   );
 }
