@@ -9,24 +9,30 @@ const STATUS_LABELS: Record<DeliverableStatus, string> = {
   Accepted: 'Accepted', Rejected: 'Rejected',
 };
 
+export interface DeliverableCreateInitialValues {
+  title?: string;
+  linkedTaskIds?: string[];
+}
+
 interface Props {
   tasks: WorkItem[];
   onSave: (deliverable: Deliverable) => void;
   onClose: () => void;
+  initialValues?: DeliverableCreateInitialValues;
 }
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function DeliverableCreateForm({ tasks, onSave, onClose }: Props) {
-  const [title, setTitle] = useState('');
+export function DeliverableCreateForm({ tasks, onSave, onClose, initialValues }: Props) {
+  const [title, setTitle] = useState(initialValues?.title ?? '');
   const [description, setDescription] = useState('');
   const [owner, setOwner] = useState('');
   const [targetDate, setTargetDate] = useState('');
   const [status, setStatus] = useState<DeliverableStatus>('Planned');
   const [criteria, setCriteria] = useState<AcceptanceCriterion[]>([]);
-  const [linkedTaskIds, setLinkedTaskIds] = useState<string[]>([]);
+  const [linkedTaskIds, setLinkedTaskIds] = useState<string[]>(initialValues?.linkedTaskIds ?? []);
   const [notes, setNotes] = useState('');
   const [titleError, setTitleError] = useState(false);
 

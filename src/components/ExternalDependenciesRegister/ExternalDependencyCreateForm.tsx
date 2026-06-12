@@ -12,20 +12,26 @@ function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+export interface ExtDepCreateInitialValues {
+  title?: string;
+  linkedTaskIds?: string[];
+}
+
 interface Props {
   tasks: WorkItem[];
   onSave: (dep: ExternalDependency) => void;
   onClose: () => void;
+  initialValues?: ExtDepCreateInitialValues;
 }
 
-export function ExternalDependencyCreateForm({ tasks, onSave, onClose }: Props) {
-  const [title, setTitle] = useState('');
+export function ExternalDependencyCreateForm({ tasks, onSave, onClose, initialValues }: Props) {
+  const [title, setTitle] = useState(initialValues?.title ?? '');
   const [description, setDescription] = useState('');
   const [externalOwner, setExternalOwner] = useState('');
   const [internalOwner, setInternalOwner] = useState('');
   const [targetDate, setTargetDate] = useState('');
   const [status, setStatus] = useState<DepStatus>('OnTrack');
-  const [linkedTaskIds, setLinkedTaskIds] = useState<string[]>([]);
+  const [linkedTaskIds, setLinkedTaskIds] = useState<string[]>(initialValues?.linkedTaskIds ?? []);
   const [notes, setNotes] = useState('');
   const [titleError, setTitleError] = useState(false);
 

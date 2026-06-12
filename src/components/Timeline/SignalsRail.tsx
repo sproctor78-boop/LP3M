@@ -2,10 +2,11 @@
 // SignalsRail — collapsible right-hand rail showing action-required signals.
 // =============================================================================
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { AppDomainState } from '../../domain/types';
 import { AppAction, localToday } from '../../state/appState';
 import { deriveSignals, Signal } from '../../engine/signalsEngine';
+import { deriveSuggestions, Suggestion } from '../../engine/adviceEngine';
 import { canBeAccepted } from '../../domain/deliverable';
 
 const RAIL_WIDTH = 280;
@@ -21,6 +22,10 @@ interface Props {
 export function SignalsRail({ domain, open, onToggle, dispatch, onEditEntity }: Props) {
   const today = localToday();
   const signals = useMemo(() => deriveSignals(domain, today), [domain, today]);
+  const suggestions = useMemo(() => deriveSuggestions(domain, today), [domain, today]);
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const visibleSuggestions = suggestions.filter((s) => !dismissedIds.has(s.id));
+  const totalCount = signals.length + visibleSuggestions.length;
 
   return (
     <div
@@ -77,25 +82,42 @@ export function SignalsRail({ domain, open, onToggle, dispatch, onEditEntity }: 
             }}
           >
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)' }}>Signals</span>
-            {signals.length > 0 ? (
-              <span className="rip-badge rip-badge--risk" style={{ fontSize: 9 }}>{signals.length}</span>
+            {totalCount > 0 ? (
+              <span className="rip-badge rip-badge--risk" style={{ fontSize: 9 }}>{totalCount}</span>
             ) : null}
           </div>
           <div style={{ flex: 1, overflowY: 'auto', padding: '8px 8px' }}>
-            {signals.length === 0 ? (
+            {totalCount === 0 ? (
               <p style={{ fontSize: 12, color: 'var(--ink-muted)', textAlign: 'center', marginTop: 24 }}>
                 Nothing needs you right now.
               </p>
             ) : (
-              signals.map((sig) => (
-                <SignalCard
-                  key={sig.id}
-                  signal={sig}
-                  domain={domain}
-                  dispatch={dispatch}
-                  onEditEntity={onEditEntity}
-                />
-              ))
+              <>
+                {signals.map((sig) => (
+                  <SignalCard
+                    key={sig.id}
+                    signal={sig}
+                    domain={domain}
+                    dispatch={dispatch}
+                    onEditEntity={onEditEntity}
+                  />
+                ))}
+                {visibleSuggestions.length > 0 && (
+                  <>
+                    {signals.length > 0 && (
+                      <div style={{ height: 1, background: 'var(--border)', margin: '8px 0' }} />
+                    )}
+                    {visibleSuggestions.map((s) => (
+                      <SuggestionCard
+                        key={s.id}
+                        suggestion={s}
+                        dispatch={dispatch}
+                        onDismiss={(id) => setDismissedIds((prev) => new Set([...prev, id]))}
+                      />
+                    ))}
+                  </>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -178,6 +200,64 @@ function SignalCard({ signal, domain, dispatch, onEditEntity }: CardProps) {
         {!signal.taskId && signal.entityId ? (
           <button className="btn btn-sm" style={{ fontSize: 10 }} onClick={() => navigateToRegister(signal, domain, dispatch)}>
             Open register
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+interface SuggestionCardProps {
+  suggestion: Suggestion;
+  dispatch: (action: AppAction) => void;
+  onDismiss: (id: string) => void;
+}
+
+function SuggestionCard({ suggestion, dispatch, onDismiss }: SuggestionCardProps) {
+  const handleJump = () => {
+    if (suggestion.taskId) {
+      dispatch({ type: 'selectTask', taskId: suggestion.taskId, openDrawer: false });
+      dispatch({ type: 'setScrollToTask', taskId: suggestion.taskId });
+    }
+  };
+
+  const handleApply = () => {
+    dispatch({ type: 'batch', actions: suggestion.actions });
+  };
+
+  return (
+    <div className="rip-signal-card" style={{ marginBottom: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="rip-signal-card-category rip-signal-card-category--suggest">Suggest</div>
+        <button
+          type="button"
+          className="btn btn-sm"
+          style={{ fontSize: 10, padding: '1px 4px', minWidth: 0, color: 'var(--ink-muted)' }}
+          onClick={() => onDismiss(suggestion.id)}
+          title="Dismiss"
+          aria-label="Dismiss suggestion"
+        >
+          ×
+        </button>
+      </div>
+      <div
+        className="rip-signal-card-body"
+        title={suggestion.title}
+        style={{ cursor: suggestion.taskId ? 'pointer' : undefined }}
+        onClick={suggestion.taskId ? handleJump : undefined}
+      >
+        {suggestion.title}
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {suggestion.detail}
+      </div>
+      <div className="rip-signal-card-actions">
+        {suggestion.taskId ? (
+          <button className="btn btn-sm" style={{ fontSize: 10 }} onClick={handleJump}>Jump</button>
+        ) : null}
+        {suggestion.actions.length > 0 ? (
+          <button className="btn btn-sm" style={{ fontSize: 10, color: '#7c3aed' }} onClick={handleApply}>
+            Apply
           </button>
         ) : null}
       </div>

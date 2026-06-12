@@ -10,8 +10,8 @@ import { AppState } from '../domain/types';
 import { createInitialDomainState } from '../domain/seedData';
 import { DEFAULT_TASK_LIST_WIDTH, DEFAULT_ZOOM } from '../domain/constants';
 
-const STORE_KEY = 'ripple_state_v8';
-const STORE_VERSION = 8;
+const STORE_KEY = 'ripple_state_v9';
+const STORE_VERSION = 9;
 
 interface StoredEnvelope {
   version: number;
@@ -140,16 +140,35 @@ function migrateDomain(domain: AppState['domain']): AppState['domain'] {
   const deliverables = Array.isArray(raw.deliverables) ? raw.deliverables : [];
   const migratedRisks = risks.map((r: unknown) => {
     const risk = r as Record<string, unknown>;
-    if (!risk.proximity) return { ...risk, proximity: 'MediumTerm' };
-    return risk;
+    return {
+      ...risk,
+      proximity: risk.proximity ?? 'MediumTerm',
+      linkedTaskIds: Array.isArray(risk.linkedTaskIds) ? risk.linkedTaskIds : [],
+      linkedDeliverableIds: Array.isArray(risk.linkedDeliverableIds) ? risk.linkedDeliverableIds : [],
+    };
   }) as unknown as AppState['domain']['risks'];
+  const migratedExtDeps = externalDependencies.map((d: unknown) => {
+    const dep = d as Record<string, unknown>;
+    return {
+      ...dep,
+      linkedTaskIds: Array.isArray(dep.linkedTaskIds) ? dep.linkedTaskIds : [],
+    };
+  }) as unknown as AppState['domain']['externalDependencies'];
+  const migratedDeliverables = deliverables.map((d: unknown) => {
+    const del = d as Record<string, unknown>;
+    return {
+      ...del,
+      linkedTaskIds: Array.isArray(del.linkedTaskIds) ? del.linkedTaskIds : [],
+      acceptanceCriteria: Array.isArray(del.acceptanceCriteria) ? del.acceptanceCriteria : [],
+    };
+  }) as unknown as AppState['domain']['deliverables'];
   return {
     ...domain,
     people,
     risks: migratedRisks,
     raidActions,
-    externalDependencies: externalDependencies as AppState['domain']['externalDependencies'],
-    deliverables: deliverables as AppState['domain']['deliverables'],
+    externalDependencies: migratedExtDeps,
+    deliverables: migratedDeliverables,
     tasks: domain.tasks.map((task) => {
       const t = task as unknown as Record<string, unknown>;
       return {
@@ -160,6 +179,23 @@ function migrateDomain(domain: AppState['domain']): AppState['domain'] {
       };
     }),
   };
+}
+
+/** Exported for testing — accepts a partial domain-like object and normalises it. */
+export function migrateDomainForTest(partial: Record<string, unknown>): AppState['domain'] {
+  const base: AppState['domain'] = {
+    tasks: [],
+    columns: [{ key: 'todo', label: 'To do' }],
+    swimlanes: [{ key: 'default', label: 'Default' }],
+    workingCalendar: { highlightWeekends: false, holidays: [] },
+    people: [],
+    risks: [],
+    raidActions: [],
+    externalDependencies: [],
+    deliverables: [],
+    ...partial,
+  };
+  return migrateDomain(base);
 }
 
 export function loadAppState(): AppState {
