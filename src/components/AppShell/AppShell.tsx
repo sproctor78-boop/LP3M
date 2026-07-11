@@ -4,7 +4,8 @@ import { getDeliverablesReadyForAcceptance } from '../../domain/deliverable';
 import { downloadJsonExport } from '../../export/jsonExport';
 import { StatusPill } from '../StatusPill/StatusPill';
 import { showHint } from '../Toasts/Hint';
-import { SectionSwitcher } from './SectionSwitcher';
+import { SectionTiles } from './SectionTiles';
+import { RippleMark } from './RippleMark';
 
 interface Props {
   state: AppState;
@@ -54,7 +55,7 @@ export function AppShell({
     return baseLabel;
   };
 
-  const switcherOptions = BASE_VIEW_MODES.map((mode) => ({
+  const tileOptions = BASE_VIEW_MODES.map((mode) => ({
     key: mode.key,
     label: viewModeLabel(mode.key, mode.label),
   }));
@@ -63,10 +64,10 @@ export function AppShell({
     <div className="app-shell">
       <header className="app-header">
         <div className="brand-block">
-          <div className="brand-mark-small">
-            Ripple<em>.</em>
-          </div>
-          <SectionSwitcher mode={state.view.mode} options={switcherOptions} onSelect={onViewMode} />
+          <span className="app-wordmark">
+            Ripple<RippleMark />
+          </span>
+          <SectionTiles mode={state.view.mode} options={tileOptions} onSelect={onViewMode} />
         </div>
 
         <div className="header-actions">
