@@ -685,9 +685,15 @@ function appBaseReducer(state: AppState, action: AppAction): AppState {
     }
     case 'removeExternalDependency': {
       const externalDependencies = state.domain.externalDependencies.filter((d) => d.id !== action.depId);
+      const removedId = action.depId;
+      const risks = state.domain.risks.map((r) => {
+        const filtered = r.linkedDependencyIds.filter((id) => id !== removedId);
+        if (filtered.length === r.linkedDependencyIds.length) return r;
+        return { ...r, linkedDependencyIds: filtered, lastModifiedAt: new Date().toISOString() };
+      });
       const newExtDepId = state.view.selectedExtDepId === action.depId ? null : state.view.selectedExtDepId;
       return {
-        ...withDomainRecompute(state, { externalDependencies }),
+        ...withDomainRecompute(state, { externalDependencies, risks }),
         view: {
           ...state.view,
           selectedExtDepId: newExtDepId,

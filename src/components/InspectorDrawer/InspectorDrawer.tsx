@@ -8,6 +8,12 @@ import { ExternalDependencyCreateForm, ExtDepCreateInitialValues } from '../Exte
 import { ExternalDependencyInspector } from '../ExternalDependenciesRegister/ExternalDependencyInspector';
 import { DeliverableCreateForm, DeliverableCreateInitialValues } from '../DeliverablesRegister/DeliverableCreateForm';
 import { DeliverableInspector } from '../DeliverablesRegister/DeliverableInspector';
+import {
+  getDeliverableLinkedRisks,
+  getDependencyLinkedRisks,
+  getRiskLinkedDeliverables,
+  getRiskLinkedDependencies,
+} from '../../state/selectors';
 
 interface Props {
   state: AppState;
@@ -36,6 +42,10 @@ interface Props {
   onUpdateRaidAction: (actionId: string, patch: Partial<RaidAction>) => void;
   onDeleteRaidAction: (actionId: string) => void;
   onCompleteRaidAction: (actionId: string, effectiveness: ImpactBand) => void;
+  // Cross-register navigation
+  onSelectRisk: (riskId: string) => void;
+  onSelectDeliverable: (deliverableId: string) => void;
+  onSelectExtDep: (depId: string) => void;
   // Risk creation
   wide?: boolean;
   showRiskCreate?: boolean;
@@ -95,6 +105,9 @@ export function InspectorDrawer({
   onUpdateRaidAction,
   onDeleteRaidAction,
   onCompleteRaidAction,
+  onSelectRisk,
+  onSelectDeliverable,
+  onSelectExtDep,
   wide,
   showRiskCreate,
   riskCreateInitialValues,
@@ -174,6 +187,7 @@ export function InspectorDrawer({
         deliverable={selectedDeliverable}
         tasks={state.domain.tasks}
         today={today}
+        linkedRisks={getDeliverableLinkedRisks(selectedDeliverable.id, state.domain)}
         onUpdate={onUpdateDeliverable}
         onSetStatus={onSetDeliverableStatus}
         onRemove={onRemoveDeliverable}
@@ -183,6 +197,7 @@ export function InspectorDrawer({
         onReorderCriteria={onReorderCriteria}
         onMarkMet={onMarkCriterionMet}
         onMarkUnmet={onMarkCriterionUnmet}
+        onSelectRisk={onSelectRisk}
       />
     );
   } else if (showExtDepCreate && onCreateExtDep && onCloseExtDepCreate) {
@@ -199,6 +214,7 @@ export function InspectorDrawer({
       <RiskCreateForm
         tasks={state.domain.tasks}
         deliverables={state.domain.deliverables}
+        externalDependencies={state.domain.externalDependencies}
         onSave={onCreateRisk}
         onClose={onCloseRiskCreate}
         initialValues={riskCreateInitialValues}
@@ -210,8 +226,10 @@ export function InspectorDrawer({
         dep={selectedExtDep}
         tasks={state.domain.tasks}
         today={today}
+        linkedRisks={getDependencyLinkedRisks(selectedExtDep.id, state.domain)}
         onUpdate={onUpdateExtDep}
         onRemove={onRemoveExtDep}
+        onSelectRisk={onSelectRisk}
       />
     );
   } else if (fc) {
@@ -247,10 +265,14 @@ export function InspectorDrawer({
       <RiskInspector
         risk={selectedRisk}
         raidActions={state.domain.raidActions.filter((a) => a.riskId === selectedRisk.id)}
+        linkedDeliverables={getRiskLinkedDeliverables(selectedRisk.id, state.domain)}
+        linkedDependencies={getRiskLinkedDependencies(selectedRisk.id, state.domain)}
         onUpdateRisk={onUpdateRisk}
         onDeleteRisk={onDeleteRisk}
         onApproveResidualScore={onApproveResidualScore}
         onRejectResidualScore={onRejectResidualScore}
+        onSelectDeliverable={onSelectDeliverable}
+        onSelectExtDep={onSelectExtDep}
       />
     );
   } else if (selectedAction) {

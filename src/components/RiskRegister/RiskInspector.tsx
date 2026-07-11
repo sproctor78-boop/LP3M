@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ImpactBand, RaidAction, Risk, RiskCategory, RiskScore } from '../../domain/types';
+import { Deliverable, ExternalDependency, ImpactBand, RaidAction, Risk, RiskCategory, RiskScore } from '../../domain/types';
 import { buildRiskScore } from '../../domain/raidScoring';
 import { RiskScoreBadge } from './RiskScoreBadge';
 import { formatShort } from '../../engine/dateUtils';
@@ -7,10 +7,14 @@ import { formatShort } from '../../engine/dateUtils';
 interface Props {
   risk: Risk;
   raidActions: RaidAction[];
+  linkedDeliverables: Deliverable[];
+  linkedDependencies: ExternalDependency[];
   onUpdateRisk: (riskId: string, patch: Partial<Risk>) => void;
   onDeleteRisk: (riskId: string) => void;
   onApproveResidualScore: (riskId: string, newResidual: RiskScore) => void;
   onRejectResidualScore: (riskId: string) => void;
+  onSelectDeliverable: (deliverableId: string) => void;
+  onSelectExtDep: (depId: string) => void;
 }
 
 const CATEGORIES: RiskCategory[] = [
@@ -77,10 +81,14 @@ function ScoreEditor({ label, score, onChange }: ScoreEditorProps) {
 export function RiskInspector({
   risk,
   raidActions,
+  linkedDeliverables,
+  linkedDependencies,
   onUpdateRisk,
   onDeleteRisk,
   onApproveResidualScore,
   onRejectResidualScore,
+  onSelectDeliverable,
+  onSelectExtDep,
 }: Props) {
   const [approvalPct, setApprovalPct] = useState(risk.scores.residual.probabilityPct);
   const [approvalCost, setApprovalCost] = useState<ImpactBand>(risk.scores.residual.costImpact);
@@ -245,6 +253,48 @@ export function RiskInspector({
               onChange={(e) => { if (e.target.value) onUpdateRisk(risk.id, { reviewDate: e.target.value }); }} />
           </div>
         </div>
+      </div>
+
+      {/* Linked Deliverables */}
+      <div className="detail-section">
+        <div className="detail-label">Linked Deliverables</div>
+        {linkedDeliverables.length === 0 ? (
+          <div className="detail-value" style={{ fontSize: 12, color: 'var(--ink-muted)' }}>None</div>
+        ) : (
+          <div className="link-picker-chips" style={{ border: 'none', padding: 0, minHeight: 0 }}>
+            {linkedDeliverables.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                className="rip-chip rip-chip-nav"
+                onClick={() => onSelectDeliverable(d.id)}
+              >
+                <span className="rip-chip-label">{d.id} — {d.title}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Linked External Dependencies */}
+      <div className="detail-section">
+        <div className="detail-label">Linked External Dependencies</div>
+        {linkedDependencies.length === 0 ? (
+          <div className="detail-value" style={{ fontSize: 12, color: 'var(--ink-muted)' }}>None</div>
+        ) : (
+          <div className="link-picker-chips" style={{ border: 'none', padding: 0, minHeight: 0 }}>
+            {linkedDependencies.map((dep) => (
+              <button
+                key={dep.id}
+                type="button"
+                className="rip-chip rip-chip-nav"
+                onClick={() => onSelectExtDep(dep.id)}
+              >
+                <span className="rip-chip-label">{dep.id} — {dep.title}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Controls */}

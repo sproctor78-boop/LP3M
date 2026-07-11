@@ -3,10 +3,12 @@
 // Pure TypeScript: no React, no DOM, no Date construction (today is a param).
 // =============================================================================
 
-import { AppDomainState, WorkItem } from '../domain/types';
+import { AppDomainState, Risk, WorkItem } from '../domain/types';
+import { getProximityFromDate } from '../domain/risk';
+import { buildRiskScore } from '../domain/raidScoring';
 import { AppAction } from '../state/appState';
 
-export type SuggestionKind = 'missing-milestone' | 'breach-from-birth' | 'stale-risk' | 'floating-milestone' | 'received-constraining' | 'milestone-drift';
+export type SuggestionKind = 'missing-milestone' | 'breach-from-birth' | 'stale-risk' | 'raise-risk-from-dep' | 'floating-milestone' | 'received-constraining' | 'milestone-drift';
 
 export interface Suggestion {
   id: string;
@@ -22,6 +24,7 @@ export interface Suggestion {
 const KIND_SEVERITY: Record<SuggestionKind, number> = {
   'breach-from-birth':      10,
   'stale-risk':             20,
+  'raise-risk-from-dep':    25,
   'floating-milestone':     30,
   'milestone-drift':        35,
   'missing-milestone':      40,
@@ -207,6 +210,57 @@ export function deriveSuggestions(domain: AppDomainState, today: string): Sugges
         ],
       });
     }
+  }
+
+  // ── Rule 7: Raise risk from an unrisked Late/AtRisk external dependency ────
+  for (const dep of domain.externalDependencies) {
+    if (dep.status !== 'Late' && dep.status !== 'AtRisk') continue;
+    const alreadyLinked = domain.risks.some((r) => (r.linkedDependencyIds ?? []).includes(dep.id));
+    if (alreadyLinked) continue;
+
+    const isLate = dep.status === 'Late';
+    const reviewDate = dep.targetDate || today;
+    const proximity = getProximityFromDate(new Date(dep.targetDate || today), new Date(today));
+
+    const risk: Risk = {
+      id: `MRA${deterministicId(`risk-from-dep-${dep.id}`)}`,
+      title: `Delay in ${dep.title}`,
+      description: `Auto-raised from external dependency: ${dep.description || dep.title}`,
+      category: 'External',
+      owner: dep.internalOwner,
+      status: 'Open',
+      scores: isLate
+        ? {
+            inherent: buildRiskScore(75, 3, 4),
+            residual: buildRiskScore(75, 3, 4),
+            target: buildRiskScore(30, 2, 2),
+          }
+        : {
+            inherent: buildRiskScore(40, 3, 3),
+            residual: buildRiskScore(40, 3, 3),
+            target: buildRiskScore(20, 2, 2),
+          },
+      proposedResidualScore: null,
+      controls: [],
+      mitigations: [],
+      raisedDate: today,
+      reviewDate,
+      lastModifiedAt: `${today}T00:00:00.000Z`,
+      proximity,
+      linkedTaskIds: [...dep.linkedTaskIds],
+      linkedDeliverableIds: [],
+      linkedDependencyIds: [dep.id],
+    };
+
+    suggestions.push({
+      id: `raise-risk-from-dep-${dep.id}`,
+      kind: 'raise-risk-from-dep',
+      title: `External dependency "${dep.title}" has no linked risk`,
+      detail: `Status ${dep.status} — consider raising a risk`,
+      entityId: dep.id,
+      taskId: dep.linkedTaskIds[0],
+      actions: [{ type: 'createRisk', risk }],
+    });
   }
 
   // Sort by kind severity, then by id for stability within tier

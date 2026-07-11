@@ -98,6 +98,8 @@ export interface Risk {
   linkedTaskIds: string[];
   /** IDs of Deliverables directly associated with this risk. */
   linkedDeliverableIds: string[];
+  /** IDs of ExternalDependencies directly associated with this risk. */
+  linkedDependencyIds: string[];
   /** Estimated schedule slip if the risk materialises (three-point estimate, in calendar days). */
   scheduleImpactDays?: { optimistic: number; mostLikely: number; pessimistic: number };
   /** Primary impact dimension of this risk. */

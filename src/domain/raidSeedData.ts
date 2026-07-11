@@ -43,6 +43,7 @@ export function seedRisks(): Risk[] {
       proximity: 'NearTerm' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -74,6 +75,7 @@ export function seedRisks(): Risk[] {
       proximity: 'Imminent' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -106,6 +108,7 @@ export function seedRisks(): Risk[] {
       proximity: 'Imminent' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -137,6 +140,7 @@ export function seedRisks(): Risk[] {
       proximity: 'NearTerm' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -166,6 +170,7 @@ export function seedRisks(): Risk[] {
       proximity: 'NearTerm' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -197,6 +202,7 @@ export function seedRisks(): Risk[] {
       proximity: 'NearTerm' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -226,6 +232,7 @@ export function seedRisks(): Risk[] {
       proximity: 'NearTerm' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -257,6 +264,7 @@ export function seedRisks(): Risk[] {
       proximity: 'Imminent' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: ['ED01'],
     },
 
     // -------------------------------------------------------------------------
@@ -286,6 +294,7 @@ export function seedRisks(): Risk[] {
       proximity: 'NearTerm' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -317,6 +326,7 @@ export function seedRisks(): Risk[] {
       proximity: 'NearTerm' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: ['ED03'],
     },
 
     // -------------------------------------------------------------------------
@@ -346,6 +356,7 @@ export function seedRisks(): Risk[] {
       proximity: 'NearTerm' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -377,6 +388,7 @@ export function seedRisks(): Risk[] {
       proximity: 'NearTerm' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: [],
     },
   ];
 }

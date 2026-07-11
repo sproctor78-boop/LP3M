@@ -391,6 +391,9 @@ export function App() {
           dispatch({ type: 'markCriterionUnmet', deliverableId, criterionId })
         }
         onClose={() => { dispatch({ type: 'closeDrawer' }); setShowRiskCreate(false); setShowExtDepCreate(false); setShowDeliverableCreate(false); }}
+        onSelectRisk={(riskId) => dispatch({ type: 'selectRisk', riskId, openDrawer: true })}
+        onSelectDeliverable={(deliverableId) => dispatch({ type: 'selectDeliverable', deliverableId, openDrawer: true })}
+        onSelectExtDep={(depId) => dispatch({ type: 'selectExtDep', depId, openDrawer: true })}
         onUpdateRisk={(riskId, patch) => dispatch({ type: 'updateRisk', riskId, patch })}
         onDeleteRisk={(riskId) => {
           dispatch({ type: 'deleteRisk', riskId });

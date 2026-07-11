@@ -147,6 +147,7 @@ function migrateDomain(domain: AppState['domain']): AppState['domain'] {
       proximity: risk.proximity ?? 'MediumTerm',
       linkedTaskIds: Array.isArray(risk.linkedTaskIds) ? risk.linkedTaskIds : [],
       linkedDeliverableIds: Array.isArray(risk.linkedDeliverableIds) ? risk.linkedDeliverableIds : [],
+      linkedDependencyIds: Array.isArray(risk.linkedDependencyIds) ? risk.linkedDependencyIds : [],
     };
   }) as unknown as AppState['domain']['risks'];
   const migratedExtDeps = externalDependencies.map((d: unknown) => {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Deliverable, WorkItem } from '../../domain/types';
+import { Deliverable, ExternalDependency, WorkItem } from '../../domain/types';
 import { ImpactBand, Proximity, Risk, RiskCategory } from '../../domain/types';
 import { buildRiskScore } from '../../domain/raidScoring';
 import { RiskScoreBadge } from './RiskScoreBadge';
@@ -46,12 +46,13 @@ export interface RiskCreateInitialValues {
 interface Props {
   tasks: WorkItem[];
   deliverables: Deliverable[];
+  externalDependencies: ExternalDependency[];
   onSave: (risk: Risk) => void;
   onClose: () => void;
   initialValues?: RiskCreateInitialValues;
 }
 
-export function RiskCreateForm({ tasks, deliverables, onSave, onClose, initialValues }: Props) {
+export function RiskCreateForm({ tasks, deliverables, externalDependencies, onSave, onClose, initialValues }: Props) {
   const [title, setTitle] = useState(initialValues?.title ?? '');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<RiskCategory>('Technical');
@@ -67,6 +68,7 @@ export function RiskCreateForm({ tasks, deliverables, onSave, onClose, initialVa
   const [pessimistic, setPessimistic] = useState(0);
   const [linkedTaskIds, setLinkedTaskIds] = useState<string[]>(initialValues?.linkedTaskIds ?? []);
   const [linkedDeliverableIds, setLinkedDeliverableIds] = useState<string[]>([]);
+  const [linkedDependencyIds, setLinkedDependencyIds] = useState<string[]>([]);
   const [titleError, setTitleError] = useState(false);
 
   const inherentScore = buildRiskScore(probabilityPct, impactBand, impactBand);
@@ -77,6 +79,7 @@ export function RiskCreateForm({ tasks, deliverables, onSave, onClose, initialVa
 
   const taskItems = tasks.filter((t) => !t.isParent).map((t) => ({ id: t.id, label: t.title }));
   const deliverableItems = deliverables.map((d) => ({ id: d.id, label: d.title }));
+  const dependencyItems = externalDependencies.map((d) => ({ id: d.id, label: d.title }));
 
   const buildRisk = (): Risk => ({
     id: crypto.randomUUID().slice(0, 8).toUpperCase(),
@@ -95,6 +98,7 @@ export function RiskCreateForm({ tasks, deliverables, onSave, onClose, initialVa
     proximity,
     linkedTaskIds,
     linkedDeliverableIds,
+    linkedDependencyIds,
     impactType,
     scheduleImpactDays: showScheduleImpact
       ? { optimistic, mostLikely, pessimistic }
@@ -106,7 +110,7 @@ export function RiskCreateForm({ tasks, deliverables, onSave, onClose, initialVa
     setRaisedDate(todayStr()); setReviewDate(''); setProximity('MediumTerm');
     setProbabilityPct(50); setImpactBand(3); setImpactType('schedule');
     setOptimistic(0); setMostLikely(0); setPessimistic(0);
-    setLinkedTaskIds([]); setLinkedDeliverableIds([]); setTitleError(false);
+    setLinkedTaskIds([]); setLinkedDeliverableIds([]); setLinkedDependencyIds([]); setTitleError(false);
   };
 
   const handleSave = () => {
@@ -281,6 +285,17 @@ export function RiskCreateForm({ tasks, deliverables, onSave, onClose, initialVa
           selected={linkedDeliverableIds}
           onChange={setLinkedDeliverableIds}
           placeholder="Search deliverables…"
+        />
+      </div>
+
+      {/* Threatens dependencies */}
+      <div className="risk-create-section">
+        <div className="risk-create-section-title">Threatens dependencies</div>
+        <LinkPicker
+          items={dependencyItems}
+          selected={linkedDependencyIds}
+          onChange={setLinkedDependencyIds}
+          placeholder="Search external dependencies…"
         />
       </div>
 
