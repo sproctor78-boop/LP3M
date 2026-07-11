@@ -1,17 +1,34 @@
-import { useEffect, useState } from 'react';
-import { WorkingCalendar } from '../../domain/types';
+import { useEffect, useRef, useState } from 'react';
+import { AppDomainState, WorkingCalendar } from '../../domain/types';
+import { downloadBackup, parseBackupImport } from '../../state/jsonBackup';
 
 interface Props {
   calendar: WorkingCalendar;
+  domain: AppDomainState;
+  today: string;
   onCancel: () => void;
   onSave: (highlightWeekends: boolean, holidays: string[]) => void;
+  onImportDomain: (domain: AppDomainState) => void;
+  onResetEmpty: () => void;
+  onResetSeed: () => void;
 }
 
 const ISO_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-export function SettingsModal({ calendar, onCancel, onSave }: Props) {
+export function SettingsModal({
+  calendar,
+  domain,
+  today,
+  onCancel,
+  onSave,
+  onImportDomain,
+  onResetEmpty,
+  onResetSeed,
+}: Props) {
   const [highlightWeekends, setHighlightWeekends] = useState(calendar.highlightWeekends);
   const [holidaysText, setHolidaysText] = useState(calendar.holidays.join('\n'));
+  const [importError, setImportError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -27,6 +44,46 @@ export function SettingsModal({ calendar, onCancel, onSave }: Props) {
       .map((line) => line.trim())
       .filter((line) => ISO_PATTERN.test(line));
     onSave(highlightWeekends, holidays);
+  };
+
+  const handleExport = () => {
+    downloadBackup(domain, today);
+  };
+
+  const handleImportClick = () => {
+    setImportError(null);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = typeof reader.result === 'string' ? reader.result : '';
+      const result = parseBackupImport(text);
+      if (!result.ok) {
+        setImportError(result.error);
+        return;
+      }
+      setImportError(null);
+      onImportDomain(result.domain);
+    };
+    reader.onerror = () => setImportError('Could not read the selected file.');
+    reader.readAsText(file);
+  };
+
+  const handleResetEmpty = () => {
+    if (window.confirm('This will replace all current data. Undo will restore it. Continue?')) {
+      onResetEmpty();
+    }
+  };
+
+  const handleResetSeed = () => {
+    if (window.confirm('This will replace all current data. Undo will restore it. Continue?')) {
+      onResetSeed();
+    }
   };
 
   return (
@@ -84,6 +141,39 @@ export function SettingsModal({ calendar, onCancel, onSave }: Props) {
               Currently displays as a visual stripe. Date arithmetic will skip these in a future
               version.
             </div>
+          </div>
+
+          <div className="modal-field">
+            <label>Data</label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json"
+              style={{ display: 'none' }}
+              onChange={handleFileSelected}
+            />
+            <div className="settings-data-actions">
+              <button type="button" className="btn btn-sm" onClick={handleExport}>
+                Export
+              </button>
+              <button type="button" className="btn btn-sm" onClick={handleImportClick}>
+                Import
+              </button>
+              <button type="button" className="btn btn-sm" onClick={handleResetEmpty}>
+                Reset (empty)
+              </button>
+              <button type="button" className="btn btn-sm" onClick={handleResetSeed}>
+                Reset (seed)
+              </button>
+            </div>
+            {importError ? (
+              <div className="input-error-msg" style={{ marginTop: 6 }}>{importError}</div>
+            ) : (
+              <div className="detail-value" style={{ fontSize: 11.5, color: 'var(--ink-muted)', marginTop: 6 }}>
+                Export a full backup of tasks, people, and RAID/deliverable/dependency registers.
+                Import restores from a previously exported file. Both resets are undoable.
+              </div>
+            )}
           </div>
         </div>
         <div className="modal-actions">

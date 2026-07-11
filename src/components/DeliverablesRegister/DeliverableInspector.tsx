@@ -313,16 +313,6 @@ export function DeliverableInspector({
           )}
         </div>
 
-        {/* Metadata */}
-        <div className="detail-section">
-          <div className="detail-label" style={{ marginBottom: 4 }}>Metadata</div>
-          <div style={{ fontSize: 11.5, color: 'var(--ink-muted)' }}>
-            <div>Created: {new Date(d.createdAt).toLocaleDateString()}</div>
-            <div>Last reviewed: {new Date(d.lastReviewedAt).toLocaleDateString()}</div>
-            <div>ID: {d.id}</div>
-          </div>
-        </div>
-
         {/* Remove */}
         <div className="detail-section">
           {confirmDelete ? (
@@ -338,6 +328,18 @@ export function DeliverableInspector({
               Remove deliverable
             </button>
           )}
+        </div>
+
+        {/* Audit metadata (collapsed by default) */}
+        <div className="detail-section">
+          <details className="detail-audit">
+            <summary>Audit metadata</summary>
+            <div className="detail-value" style={{ fontSize: 11.5, color: 'var(--ink-muted)' }}>
+              <div>Created: {new Date(d.createdAt).toLocaleDateString()}</div>
+              <div>Last reviewed: {new Date(d.lastReviewedAt).toLocaleDateString()}</div>
+              <div>ID: {d.id}</div>
+            </div>
+          </details>
         </div>
       </div>
     </div>

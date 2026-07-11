@@ -50,6 +50,7 @@ export function createInitialAppState(): AppState {
       deliverablesVisibleInTimeline: false,
       selectedDeliverableId: null,
       signalsRailOpen: true,
+      riskSummaryCollapsed: false,
     },
     pendingForecast: null,
     pendingChange: null,
@@ -111,6 +112,8 @@ function migrateView(view: AppState['view']): AppState['view'] {
     typeof raw.selectedDeliverableId === 'string' ? raw.selectedDeliverableId : null;
   const signalsRailOpen =
     typeof raw.signalsRailOpen === 'boolean' ? raw.signalsRailOpen : true;
+  const riskSummaryCollapsed =
+    typeof raw.riskSummaryCollapsed === 'boolean' ? raw.riskSummaryCollapsed : false;
   return {
     ...view,
     mode,
@@ -126,6 +129,7 @@ function migrateView(view: AppState['view']): AppState['view'] {
     deliverablesVisibleInTimeline,
     selectedDeliverableId,
     signalsRailOpen,
+    riskSummaryCollapsed,
   };
 }
 

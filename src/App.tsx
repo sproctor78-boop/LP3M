@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
-import { appReducer } from './state/appState';
+import { appReducer, localToday } from './state/appState';
 import {
   loadAppState,
   saveAppState,
@@ -204,6 +204,9 @@ export function App() {
               onNewRisk={() => setShowRiskCreate(true)}
               onSetCollapse={(group, collapsed) =>
                 dispatch({ type: 'setRiskColumnCollapse', group, collapsed })
+              }
+              onSetSummaryCollapsed={(collapsed) =>
+                dispatch({ type: 'setRiskSummaryCollapsed', value: collapsed })
               }
             />
           ) : state.view.mode === 'extDepRegister' ? (
@@ -494,11 +497,28 @@ export function App() {
       {showSettings ? (
         <SettingsModal
           calendar={state.domain.workingCalendar}
+          domain={state.domain}
+          today={localToday()}
           onCancel={() => setShowSettings(false)}
           onSave={(highlightWeekends, holidays) => {
             dispatch({ type: 'setWorkingCalendar', highlightWeekends, holidays });
             setShowSettings(false);
             showHint('Settings saved');
+          }}
+          onImportDomain={(domain) => {
+            dispatch({ type: 'hydrateFromJson', domain });
+            setShowSettings(false);
+            showHint('Data imported');
+          }}
+          onResetEmpty={() => {
+            dispatch({ type: 'resetToEmpty' });
+            setShowSettings(false);
+            showHint('Data reset to empty');
+          }}
+          onResetSeed={() => {
+            dispatch({ type: 'resetToSeed' });
+            setShowSettings(false);
+            showHint('Data reset to seed');
           }}
         />
       ) : null}

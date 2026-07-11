@@ -1,3 +1,31 @@
+/**
+ * Overlay stacking contract (diagnosed v0.17 "Focus" — read before touching
+ * TaskBar, TaskBadges, or any *Overlay component):
+ *
+ *   1. TaskBar (z: --z-task) — the base row. Renders title text (flex: 1,
+ *      truncates with ellipsis) and a small icon cluster (lock/breach) at
+ *      the right, both inside the bar's own flex layout — never absolutely
+ *      positioned, so they can't overlap each other.
+ *   2. TaskBadges (risk/dep/gate) — absolutely positioned INSIDE the bar,
+ *      right-anchored, on top of the title's flex space. This is the
+ *      collision point: on a narrow bar the title's ellipsis and the
+ *      badges' right-anchor fight for the same pixels, and a saturated
+ *      `.critical` fill made low-contrast badges/icons hard to read.
+ *      Fix (this pass): critical-path is now a 2px outline, not a fill;
+ *      badges are icon-only (~14px) with `title` tooltips, stack vertically
+ *      when width is tight, and collapse to a single "+N" chip beyond that.
+ *   3. RaidActionsOverlay / DeliverablesOverlay / ExternalDependenciesOverlay
+ *      — each renders in its OWN horizontal band below the task grid
+ *      (RAID_BAND_HEIGHT / DELIVERABLES_BAND_HEIGHT / EXT_DEP_BAND_HEIGHT),
+ *      never inside a task-bar's DOM. Markers sit at the target date's x
+ *      position with a thin stem into the band; they do not paint over any
+ *      bar body. Deliverables render as an edge pip (diamond) with a stem;
+ *      external dependencies render as an inbound arrow pointing at the
+ *      date column, not across the bar.
+ *
+ * Net effect: only badges vs. title ever share the same element (the bar);
+ * everything else is a separate visual layer that never overlaps a bar.
+ */
 import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AppState,

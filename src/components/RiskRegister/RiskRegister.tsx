@@ -9,6 +9,7 @@ interface Props {
   onSelectRisk: (riskId: string) => void;
   onNewRisk: () => void;
   onSetCollapse: (group: 'inherent' | 'residual', collapsed: boolean) => void;
+  onSetSummaryCollapsed: (collapsed: boolean) => void;
 }
 
 const ALL_CATEGORIES: RiskCategory[] = [
@@ -22,7 +23,7 @@ const ALL_PROXIMITIES: { value: Proximity; label: string }[] = [
   { value: 'LongTerm',   label: 'Long-term' },
 ];
 
-export function RiskRegister({ state, onSelectRisk, onNewRisk, onSetCollapse }: Props) {
+export function RiskRegister({ state, onSelectRisk, onNewRisk, onSetCollapse, onSetSummaryCollapsed }: Props) {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<RiskCategory | ''>('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -31,6 +32,13 @@ export function RiskRegister({ state, onSelectRisk, onNewRisk, onSetCollapse }: 
 
   const risks = state.domain.risks;
   const pendingCount = risks.filter((r) => r.status === 'PendingApproval').length;
+  const openCount = risks.filter((r) => r.status === 'Open').length;
+  const mitigatedCount = risks.filter((r) => r.status === 'Mitigated').length;
+  const closedCount = risks.filter((r) => r.status === 'Closed').length;
+  const redCount = risks.filter((r) => r.scores.residual.rag === 'red').length;
+  const amberCount = risks.filter((r) => r.scores.residual.rag === 'amber').length;
+  const greenCount = risks.filter((r) => r.scores.residual.rag === 'green').length;
+  const summaryCollapsed = state.view.riskSummaryCollapsed;
 
   const filtered = risks.filter((r: Risk) => {
     if (pendingOnly && r.status !== 'PendingApproval') return false;
@@ -138,6 +146,45 @@ export function RiskRegister({ state, onSelectRisk, onNewRisk, onSetCollapse }: 
           </button>
         </div>
       </div>
+
+      {summaryCollapsed ? (
+        <button
+          type="button"
+          className="risk-summary-bar risk-summary-bar--collapsed"
+          onClick={() => onSetSummaryCollapsed(false)}
+          aria-expanded={false}
+          title="Expand summary"
+        >
+          <span>Summary</span>
+          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <path d="M3 4.5 L6 7.5 L9 4.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      ) : (
+        <div className="risk-summary-bar" aria-expanded={true}>
+          <div className="risk-summary-stats">
+            <span className="risk-summary-stat risk-summary-stat--red">{redCount} Red</span>
+            <span className="risk-summary-stat risk-summary-stat--amber">{amberCount} Amber</span>
+            <span className="risk-summary-stat risk-summary-stat--green">{greenCount} Green</span>
+            <span className="risk-summary-divider" />
+            <span className="risk-summary-stat">{openCount} Open</span>
+            <span className="risk-summary-stat">{mitigatedCount} Mitigated</span>
+            <span className="risk-summary-stat">{closedCount} Closed</span>
+            {pendingCount > 0 ? <span className="risk-summary-stat">{pendingCount} Pending approval</span> : null}
+          </div>
+          <button
+            type="button"
+            className="risk-summary-caret"
+            onClick={() => onSetSummaryCollapsed(true)}
+            aria-label="Collapse summary"
+            title="Collapse summary"
+          >
+            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <path d="M3 7.5 L6 4.5 L9 7.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       <RiskGrid
         risks={filtered}

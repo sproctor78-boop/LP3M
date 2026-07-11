@@ -256,6 +256,33 @@ textarea:disabled {
   font-size: 13px;
 }
 
+/* ---- Collapsed audit metadata (closed by default in every inspector) --- */
+.detail-audit summary {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  cursor: pointer;
+  list-style: none;
+}
+.detail-audit summary::-webkit-details-marker {
+  display: none;
+}
+.detail-audit summary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 9px;
+  transition: transform 0.15s ease;
+}
+.detail-audit[open] summary::before {
+  transform: rotate(90deg);
+}
+.detail-audit .detail-value {
+  margin-top: 6px;
+}
+
 /* ---- Utilities -------------------------------------------------------- */
 .sr-only {
   position: absolute;

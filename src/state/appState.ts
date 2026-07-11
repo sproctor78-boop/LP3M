@@ -25,6 +25,22 @@ import {
 } from '../engine/dependencyEngine';
 import { forecast } from '../engine/forecastEngine';
 import { recomputeSchedule } from '../engine/scheduleEngine';
+import { createInitialDomainState } from '../domain/seedData';
+
+/** Empty domain used by resetToEmpty — one column/swimlane so the board/timeline stay usable. */
+function emptyDomainState(): AppDomainState {
+  return {
+    tasks: [],
+    columns: [{ key: 'todo', label: 'To do' }],
+    swimlanes: [{ key: 'default', label: 'Default' }],
+    workingCalendar: { highlightWeekends: false, holidays: [] },
+    people: [],
+    risks: [],
+    raidActions: [],
+    externalDependencies: [],
+    deliverables: [],
+  };
+}
 
 /** Build today's date string from local time (not UTC). */
 export function localToday(): string {
@@ -128,6 +144,14 @@ export type AppAction =
   | { type: 'markCriterionUnmet'; deliverableId: string; criterionId: string }
   // Signals rail
   | { type: 'setSignalsRailOpen'; value: boolean }
+  // Risk Register summary strip
+  | { type: 'setRiskSummaryCollapsed'; value: boolean }
+  // Data management — reset & JSON restore. All three replace state.domain
+  // wholesale, preserving state.view; the outer appReducer wrapper records
+  // the pre-reset domain onto _past, so each of these is undoable for free.
+  | { type: 'resetToEmpty' }
+  | { type: 'resetToSeed' }
+  | { type: 'hydrateFromJson'; domain: AppDomainState }
   // Batch — reduces sub-actions sequentially within a single undo step.
   // Nesting flattens automatically. 'undo'/'redo' are not valid sub-actions.
   | { type: 'batch'; actions: AppAction[] }
@@ -857,6 +881,16 @@ function appBaseReducer(state: AppState, action: AppAction): AppState {
 
     case 'setSignalsRailOpen':
       return { ...state, view: { ...state.view, signalsRailOpen: action.value } };
+    case 'setRiskSummaryCollapsed':
+      return { ...state, view: { ...state.view, riskSummaryCollapsed: action.value } };
+
+    // ------- Data management: reset & JSON restore -------
+    case 'resetToEmpty':
+      return { ...state, domain: emptyDomainState() };
+    case 'resetToSeed':
+      return { ...state, domain: createInitialDomainState() };
+    case 'hydrateFromJson':
+      return { ...state, domain: action.domain };
 
     case 'batch': {
       // Flatten nested batches; exclude undo/redo sub-actions.

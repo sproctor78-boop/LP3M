@@ -18,9 +18,9 @@
 }
 
 .app-header {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 20px;
   padding: 0 24px;
   border-bottom: 1px solid var(--border);
@@ -29,71 +29,95 @@
   z-index: var(--z-sticky);
 }
 
-.brand {
+/* ---------- Brand + section switcher ------------------------------------ */
+.brand-block {
   display: flex;
-  align-items: baseline;
-  gap: 14px;
+  align-items: center;
+  gap: 12px;
   min-width: 0;
 }
-.brand-mark {
+.brand-mark-small {
   font-family: var(--font-display);
-  font-size: 22px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: var(--ink);
+  color: var(--ink-muted);
+  white-space: nowrap;
 }
-.brand-mark em {
+.brand-mark-small em {
   font-style: italic;
   color: var(--forecast);
   font-weight: 500;
 }
-.brand-tag {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.08em;
-  color: var(--ink-muted);
-  text-transform: uppercase;
-  border-left: 1px solid var(--border-strong);
-  padding-left: 14px;
-  white-space: nowrap;
-}
 
-.header-centre {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  min-width: 0;
-}
 .header-actions {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.view-switch {
-  display: inline-flex;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 3px;
+/* Single clickable dropdown that names + switches the current view. Must
+   read as interactive at rest: bordered pill, hover state, visible chevron. */
+.section-switcher {
+  position: relative;
 }
-.view-switch button {
-  border: 0;
-  background: transparent;
-  padding: 6px 14px;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--ink-muted);
-  border-radius: 5px;
+.section-switcher-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
   transition: all 0.15s ease;
 }
-.view-switch button.active {
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow: var(--shadow-sm);
+.section-switcher-trigger:hover {
+  background: var(--surface-3);
+  border-color: var(--accent-border);
 }
-.view-switch button:hover:not(.active) {
+.section-switcher-trigger .chevron {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: var(--ink-muted);
+  transition: transform 0.15s ease;
+}
+.section-switcher-trigger[aria-expanded='true'] .chevron {
+  transform: rotate(180deg);
+}
+.section-switcher-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 230px;
+  z-index: var(--z-popover);
+  background: var(--surface);
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+}
+.section-switcher-option {
+  display: flex;
+  align-items: center;
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.section-switcher-option:hover,
+.section-switcher-option.active-cursor {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.section-switcher-option.current {
+  font-weight: 600;
   color: var(--ink);
 }
 
@@ -766,8 +790,8 @@
   --track: color-mix(in srgb, var(--base) 20%, #fff);
 
   position: absolute;
-  top: 8px;
-  height: 28px;
+  top: 6px;
+  height: 32px;
   border-radius: 7px;
   border: 1px solid var(--fill);
   background: linear-gradient(
@@ -801,7 +825,12 @@
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
-.task-bar.critical { --base: var(--task-color, var(--critical)); }
+/* Critical path is a 2px outline, not a saturated fill — badges and title
+   text stay legible on top of the task's own colour regardless of criticality. */
+.task-bar.critical {
+  border: 2px solid var(--critical);
+  box-shadow: var(--shadow-sm), 0 0 0 1px var(--critical-soft);
+}
 .task-bar.forecast {
   background: var(--forecast-soft);
   border-color: var(--forecast-border);
@@ -830,7 +859,7 @@
 }
 .task-bar.subtask {
   --base: var(--task-color, var(--accent));
-  height: 22px;
+  height: 24px;
   top: 6px;
 }
 .task-bar-title {
@@ -1163,8 +1192,8 @@ body.drawing-dep {
   border: 1px solid var(--ink-2);
 }
 .legend-swatch.critical {
-  background: var(--critical);
-  border-color: var(--critical);
+  background: transparent;
+  border: 2px solid var(--critical);
 }
 .legend-swatch.forecast {
   background: var(--forecast-soft);
@@ -1246,6 +1275,8 @@ body.drawing-dep {
   flex: 1;
   overflow: auto;
   padding: 0;
+  container-type: inline-size;
+  container-name: inspector-panel;
 }
 
 .drawer-empty {
@@ -1268,7 +1299,7 @@ body.drawing-dep {
 
 .detail-section {
   border-bottom: 1px solid var(--border);
-  padding: 14px 20px;
+  padding: 7px 20px;
 }
 .detail-section:last-child {
   border-bottom: 0;
@@ -1552,6 +1583,11 @@ body.drawing-dep {
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
+.settings-data-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -1601,20 +1637,31 @@ body.drawing-dep {
 }
 
 /* ---------- Responsive ------------------------------------------------ */
-@media (max-width: 1100px) {
+/* Baseline target is 1280x800 (no mobile breakpoints). This tightens
+   defaults right at that floor; the two narrower queries below are a
+   graceful-degradation bonus below the supported minimum. */
+@media (max-width: 1280px) {
   .app-header {
-    grid-template-columns: 240px 1fr auto;
     padding: 0 16px;
     gap: 12px;
   }
-  .brand-tag {
+  .risk-register-toolbar {
+    padding: 8px 14px;
+  }
+  .risk-register-filters {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 1100px) {
+  .brand-mark-small {
     display: none;
   }
 }
 
 @media (max-width: 860px) {
   .app-header {
-    grid-template-columns: 1fr;
+    flex-wrap: wrap;
     height: auto;
     min-height: var(--header-height);
     gap: 8px;
@@ -1623,7 +1670,6 @@ body.drawing-dep {
   .app-shell {
     grid-template-rows: auto 1fr;
   }
-  .header-centre,
   .header-actions {
     justify-content: flex-start;
     flex-wrap: wrap;
@@ -2131,6 +2177,73 @@ body.splitter-dragging * {
   flex-wrap: wrap;
   flex: 1;
   justify-content: center;
+}
+
+/* ---------- Risk Register summary strip (collapsible) ------------------- */
+.risk-summary-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+  flex-shrink: 0;
+}
+.risk-summary-bar--collapsed {
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  gap: 6px;
+  justify-content: flex-start;
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+.risk-summary-bar--collapsed:hover {
+  color: var(--ink);
+  background: var(--surface-3);
+}
+.risk-summary-bar--collapsed svg {
+  width: 10px;
+  height: 10px;
+}
+.risk-summary-stats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11.5px;
+  color: var(--ink-2);
+}
+.risk-summary-stat {
+  white-space: nowrap;
+}
+.risk-summary-stat--red { color: var(--breach); font-weight: 600; }
+.risk-summary-stat--amber { color: var(--forecast); font-weight: 600; }
+.risk-summary-stat--green { color: #16a34a; font-weight: 600; } /* green-600 — not in palette */
+.risk-summary-divider {
+  width: 1px;
+  height: 12px;
+  background: var(--border-strong);
+}
+.risk-summary-caret {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: var(--ink-muted);
+  cursor: pointer;
+  padding: 2px;
+}
+.risk-summary-caret:hover {
+  color: var(--ink);
+}
+.risk-summary-caret svg {
+  width: 10px;
+  height: 10px;
 }
 
 .risk-register-search {
@@ -2769,6 +2882,38 @@ body.splitter-dragging * {
   border-radius: var(--radius-sm);
   padding: 10px 12px;
   background: var(--surface-2);
+}
+
+/* RiskInspector: Inherent / Residual / Target side-by-side. Falls back to a
+   stacked single column below --inspector-narrow (see WP5 container query). */
+.risk-score-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+.risk-score-editor {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  background: var(--surface-2);
+  min-width: 0;
+}
+.risk-score-editor-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+  margin-bottom: 6px;
+}
+
+/* Narrow inspector panel (e.g. non-wide drawer resized below its default
+   420px): fall back to a stacked single column instead of squeezing three. */
+@container inspector-panel (max-width: 360px) {
+  .risk-score-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .risk-create-score-label {
