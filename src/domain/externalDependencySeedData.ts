@@ -13,14 +13,14 @@ const TS = '2026-05-01T09:00:00.000Z';
 export function seedExternalDependencies(): ExternalDependency[] {
   return [
     // -------------------------------------------------------------------------
-    // ED01 — Cleared facility access from MOD ABW · AtRisk
+    // ED01 — Cleared facility access from site authority · AtRisk
     // -------------------------------------------------------------------------
     {
       id: 'ED01',
-      title: 'Cleared facility access from MOD ABW',
+      title: 'Cleared facility access from site authority',
       description:
-        'Programme requires confirmed access to the ABW secure facility for installation and testing activities. Access permits and site vetting paperwork pending sign-off by the site authority.',
-      externalOwner: 'MOD Annington Building Works (ABW)',
+        'Programme requires confirmed access to the secure facility for installation and testing activities. Access permits and site vetting paperwork pending sign-off by the site authority.',
+      externalOwner: 'Client Facilities Authority',
       internalOwner: 'P02',
       targetDate: '2026-06-15',
       status: 'AtRisk',
@@ -32,20 +32,20 @@ export function seedExternalDependencies(): ExternalDependency[] {
     },
 
     // -------------------------------------------------------------------------
-    // ED02 — STANAG 4671 certification from MOD test authority · Late
+    // ED02 — STANAG 4671 certification from test authority · Late
     // -------------------------------------------------------------------------
     {
       id: 'ED02',
-      title: 'STANAG 4671 certification from MOD test authority',
+      title: 'STANAG 4671 certification from test authority',
       description:
-        'Formal certification from the MOD Directorate of Standardisation confirming STANAG 4671 compliance for the primary guidance module. Required before acceptance testing and operational use.',
-      externalOwner: 'MOD Directorate of Standardisation (DStan)',
+        'Formal certification from the Certification Authority confirming STANAG 4671 compliance for the primary guidance module. Required before acceptance testing and operational use.',
+      externalOwner: 'Certification Authority (CA)',
       internalOwner: 'P05',
       targetDate: '2026-05-10',
       status: 'Late',
       linkedTaskIds: ['T07', 'T08'],
       notes:
-        'Submission made 2026-04-01. DStan review period extended due to staff availability. Chasing weekly. Risk R11 linked.',
+        'Submission made 2026-04-01. CA review period extended due to staff availability. Chasing weekly. Risk R11 linked.',
       lastReviewedAt: '2026-05-17T09:00:00.000Z',
       createdAt: '2026-03-15T09:00:00.000Z',
     },
@@ -57,8 +57,8 @@ export function seedExternalDependencies(): ExternalDependency[] {
       id: 'ED03',
       title: 'Integration test facility access confirmation',
       description:
-        'Written confirmation from MOD ITEF (Integration Test and Evaluation Facility) manager that Q3 2026 booking is secured and the facility will be available for planned acceptance test activities.',
-      externalOwner: 'MOD Integration Test & Evaluation Facility (ITEF)',
+        'Written confirmation from the Integration Test and Evaluation Facility (ITEF) manager that Q3 2026 booking is secured and the facility will be available for planned acceptance test activities.',
+      externalOwner: 'Integration Test & Evaluation Facility (ITEF)',
       internalOwner: 'P04',
       targetDate: '2026-06-01',
       status: 'OnTrack',
@@ -96,8 +96,8 @@ export function seedExternalDependencies(): ExternalDependency[] {
       id: 'ED05',
       title: 'Security accreditation sign-off from SIRO',
       description:
-        'Senior Information Risk Owner (SIRO) sign-off on the Information Assurance documentation package, required before the system can be connected to the MOD protected network.',
-      externalOwner: 'MOD Senior Information Risk Owner (SIRO)',
+        'Senior Information Risk Owner (SIRO) sign-off on the Information Assurance documentation package, required before the system can be connected to the client protected network.',
+      externalOwner: 'Client Senior Information Risk Owner (SIRO)',
       internalOwner: 'P04',
       targetDate: '2026-04-30',
       status: 'Received',

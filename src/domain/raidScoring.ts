@@ -7,7 +7,7 @@
 import { ImpactBand, ProbabilityBand, RagColour, RiskScore } from './risk';
 
 /**
- * Maps a raw probability percentage to a 1–5 band using MOD / Orange Book
+ * Maps a raw probability percentage to a 1–5 band using Orange Book
  * symmetric quintiles:
  *   1 Very Low  0–10%
  *   2 Low      11–30%

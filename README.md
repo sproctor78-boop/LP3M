@@ -100,7 +100,7 @@ committed state.
 ### RAID scoring
 
 Risk scores use a `probabilityBand × max(costImpact, timeImpact)` formula
-(range 1–25). Bands follow MOD / HM Treasury Orange Book symmetric quintiles.
+(range 1–25). Bands follow HM Treasury Orange Book symmetric quintiles.
 RAG: Green 1–5 · Amber 6–12 · Red ≥ 13. All scoring logic is in
 `src/domain/raidScoring.ts` — pure functions with no side effects, tested
 independently of the UI.
@@ -240,7 +240,7 @@ The interface has four top-level views, switchable from the header:
 | **RAID Actions Board** (fixed 4-column kanban, drag to change status) | ✅ |
 | **Timeline RAID overlay** (amber flag markers at due dates, toggle chip) | ✅ |
 | **PendingApproval governance workflow** (complete action → approver reviews → approve/reject) | ✅ |
-| **RAID scoring engine** (MOD-aligned probability bands, RAG 1–25 scale) | ✅ |
+| **RAID scoring engine** (Orange Book–aligned probability bands, RAG 1–25 scale) | ✅ |
 | **Defence-sector seed data** (12 risks R01–R12, 19 actions RA01–RA19) | ✅ |
 
 ### Known limitations (not yet implemented)

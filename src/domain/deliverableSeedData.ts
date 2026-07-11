@@ -87,12 +87,12 @@ export function seedDeliverables(): Deliverable[] {
       id: 'DL03',
       title: 'STANAG 4671 Conformance Test Report',
       description:
-        'Formal test report from the MOD Directorate of Standardisation confirming STANAG 4671 conformance of the primary guidance module. Required for NATO interoperability clearance.',
+        'Formal test report from the Certification Authority confirming STANAG 4671 conformance of the primary guidance module. Required for NATO interoperability clearance.',
       owner: 'P05',
       targetDate: '2026-09-01',
       status: 'Planned',
       acceptanceCriteria: [
-        criterion('DL03-AC1', 'Test plan reviewed and approved by MOD test authority', false),
+        criterion('DL03-AC1', 'Test plan reviewed and approved by the Certification Authority', false),
         criterion('DL03-AC2', 'All 47 conformance test cases executed with pass result', false),
         criterion('DL03-AC3', 'Test report signed by accredited test witness', false),
       ],
@@ -142,7 +142,7 @@ export function seedDeliverables(): Deliverable[] {
       id: 'DL05',
       title: 'Cyber Security Accreditation Submission',
       description:
-        'Information Assurance submission package to the MOD Cyber team for system accreditation, covering the Risk Management Accreditation Document Set (RMADS) and supporting artefacts.',
+        'Information Assurance submission package to the Client Cyber team for system accreditation, covering the Risk Management Accreditation Document Set (RMADS) and supporting artefacts.',
       owner: 'P04',
       targetDate: '2026-05-01',
       status: 'Rejected',
