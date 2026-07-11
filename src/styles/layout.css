@@ -29,25 +29,46 @@
   z-index: var(--z-sticky);
 }
 
-/* ---------- Brand + section switcher ------------------------------------ */
+/* ---------- Brand + section tiles ---------------------------------------- */
 .brand-block {
   display: flex;
   align-items: center;
-  gap: 12px;
   min-width: 0;
 }
-.brand-mark-small {
+.app-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  cursor: default;
   font-family: var(--font-display);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 21px;
+  font-weight: 700;
   letter-spacing: -0.01em;
-  color: var(--ink-muted);
+  color: var(--ink);
   white-space: nowrap;
 }
-.brand-mark-small em {
-  font-style: italic;
-  color: var(--forecast);
-  font-weight: 500;
+
+.ripple-mark {
+  display: inline-block;
+  transform: translateY(2px);  /* nudge to visually sit on the baseline */
+}
+
+.ripple-mark-ring {
+  transform-origin: 12px 14px;
+  transform-box: fill-box;
+}
+
+.app-wordmark:hover .ripple-mark-ring-1 {
+  animation: ripple-expand 900ms ease-out;
+}
+
+.app-wordmark:hover .ripple-mark-ring-2 {
+  animation: ripple-expand 900ms ease-out 150ms;
+}
+
+@keyframes ripple-expand {
+  0%   { transform: scale(0.4); opacity: 0.9; }
+  100% { transform: scale(1.15); opacity: 0; }
 }
 
 .header-actions {
@@ -56,70 +77,70 @@
   gap: 8px;
 }
 
-/* Single clickable dropdown that names + switches the current view. Must
-   read as interactive at rest: bordered pill, hover state, visible chevron. */
-.section-switcher {
-  position: relative;
+/* Horizontal row of hover-expand tiles that names + switches the current
+   view. Icon-only at rest; hover or active reveals the label via an
+   animated max-width clip (the idiomatic way to transition auto-width
+   content — the label is always in the DOM, only its rendered width clips). */
+.section-tiles {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 16px;
 }
-.section-switcher-trigger {
+
+.section-tile {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 12px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
-  color: var(--ink);
-  font-size: 14px;
-  font-weight: 600;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-muted);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition:
+    background 300ms ease,
+    color 300ms ease,
+    border-color 300ms ease;
 }
-.section-switcher-trigger:hover {
-  background: var(--surface-3);
+
+.section-tile:hover {
+  color: var(--ink);
+  background: var(--accent-soft);
+}
+
+.section-tile.active {
+  color: var(--accent);
+  background: var(--accent-soft);
   border-color: var(--accent-border);
 }
-.section-switcher-trigger .chevron {
-  width: 12px;
-  height: 12px;
-  flex-shrink: 0;
-  color: var(--ink-muted);
-  transition: transform 0.15s ease;
+
+.section-tile-icon {
+  flex: 0 0 16px;
+  display: inline-flex;
 }
-.section-switcher-trigger[aria-expanded='true'] .chevron {
-  transform: rotate(180deg);
+
+.section-tile-label {
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  opacity: 0;
+  transition:
+    max-width 300ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 300ms ease,
+    margin-left 300ms ease;
+  margin-left: 0;
 }
-.section-switcher-dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  min-width: 230px;
-  z-index: var(--z-popover);
-  background: var(--surface);
-  border: 0.5px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-md);
-  list-style: none;
-  margin: 0;
-  padding: 4px 0;
+
+.section-tile:hover .section-tile-label,
+.section-tile.active .section-tile-label {
+  max-width: 200px;
+  opacity: 1;
+  margin-left: 0;
 }
-.section-switcher-option {
-  display: flex;
-  align-items: center;
-  padding: 7px 12px;
-  font-size: 13px;
-  color: var(--ink-2);
-  cursor: pointer;
-}
-.section-switcher-option:hover,
-.section-switcher-option.active-cursor {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-.section-switcher-option.current {
-  font-weight: 600;
-  color: var(--ink);
-}
+
+/* Active gets no additional expansion — already expanded */
 
 /* ---------- Workspace -------------------------------------------------- */
 .workspace {
@@ -1654,8 +1675,8 @@ body.drawing-dep {
 }
 
 @media (max-width: 1100px) {
-  .brand-mark-small {
-    display: none;
+  .app-wordmark {
+    font-size: 18px;
   }
 }
 
@@ -2747,7 +2768,12 @@ body.splitter-dragging * {
 .risk-grid-group-row th.col-group-residual {
   background: var(--accent-soft);
   color: var(--accent);
-  display: flex;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.col-group-inner {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;

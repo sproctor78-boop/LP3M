@@ -106,31 +106,35 @@ export function RiskGrid({ risks, selectedRiskId, onSelectRisk, collapseState, o
               colSpan={inherentColSpan}
               className="risk-grid-group-header col-group-inherent"
             >
-              <span>Inherent</span>
-              <button
-                type="button"
-                className="col-group-toggle"
-                aria-label={inherentCollapsed ? 'Expand Inherent columns' : 'Collapse Inherent columns'}
-                title={inherentCollapsed ? 'Expand' : 'Collapse'}
-                onClick={() => onSetCollapse('inherent', !inherentCollapsed)}
-              >
-                {inherentCollapsed ? '▸' : '◂'}
-              </button>
+              <span className="col-group-inner">
+                <span>Inherent</span>
+                <button
+                  type="button"
+                  className="col-group-toggle"
+                  aria-label={inherentCollapsed ? 'Expand Inherent columns' : 'Collapse Inherent columns'}
+                  title={inherentCollapsed ? 'Expand' : 'Collapse'}
+                  onClick={() => onSetCollapse('inherent', !inherentCollapsed)}
+                >
+                  {inherentCollapsed ? '▸' : '◂'}
+                </button>
+              </span>
             </th>
             <th
               colSpan={residualColSpan}
               className="risk-grid-group-header col-group-residual"
             >
-              <span>Residual</span>
-              <button
-                type="button"
-                className="col-group-toggle"
-                aria-label={residualCollapsed ? 'Expand Residual columns' : 'Collapse Residual columns'}
-                title={residualCollapsed ? 'Expand' : 'Collapse'}
-                onClick={() => onSetCollapse('residual', !residualCollapsed)}
-              >
-                {residualCollapsed ? '▸' : '◂'}
-              </button>
+              <span className="col-group-inner">
+                <span>Residual</span>
+                <button
+                  type="button"
+                  className="col-group-toggle"
+                  aria-label={residualCollapsed ? 'Expand Residual columns' : 'Collapse Residual columns'}
+                  title={residualCollapsed ? 'Expand' : 'Collapse'}
+                  onClick={() => onSetCollapse('residual', !residualCollapsed)}
+                >
+                  {residualCollapsed ? '▸' : '◂'}
+                </button>
+              </span>
             </th>
             <th colSpan={2} className="risk-grid-group-header">Target</th>
             <th colSpan={2} className="risk-grid-group-header">Responses</th>
