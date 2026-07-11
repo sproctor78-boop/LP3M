@@ -4,6 +4,7 @@ import { getDeliverablesReadyForAcceptance } from '../../domain/deliverable';
 import { downloadJsonExport } from '../../export/jsonExport';
 import { StatusPill } from '../StatusPill/StatusPill';
 import { showHint } from '../Toasts/Hint';
+import { SectionSwitcher } from './SectionSwitcher';
 
 interface Props {
   state: AppState;
@@ -22,7 +23,7 @@ const BASE_VIEW_MODES: { key: ViewMode; label: string }[] = [
   { key: 'timeline', label: 'Timeline' },
   { key: 'board', label: 'Board' },
   { key: 'riskRegister', label: 'Risk Register' },
-  { key: 'raidBoard', label: 'RAID Actions' },
+  { key: 'raidBoard', label: 'RAID Board' },
   { key: 'extDepRegister', label: 'External Dependencies' },
   { key: 'deliverableRegister', label: 'Deliverables' },
 ];
@@ -53,35 +54,23 @@ export function AppShell({
     return baseLabel;
   };
 
+  const switcherOptions = BASE_VIEW_MODES.map((mode) => ({
+    key: mode.key,
+    label: viewModeLabel(mode.key, mode.label),
+  }));
+
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div className="brand">
-          <div className="brand-mark">
+        <div className="brand-block">
+          <div className="brand-mark-small">
             Ripple<em>.</em>
           </div>
-          <div className="brand-tag">Schedule Impact Forecasting · v0.9</div>
-        </div>
-
-        <div className="header-centre">
-          <div className="view-switch" role="tablist" aria-label="View mode">
-            {BASE_VIEW_MODES.map((mode) => (
-              <button
-                key={mode.key}
-                type="button"
-                role="tab"
-                aria-selected={state.view.mode === mode.key}
-                className={state.view.mode === mode.key ? 'active' : ''}
-                onClick={() => onViewMode(mode.key)}
-              >
-                {viewModeLabel(mode.key, mode.label)}
-              </button>
-            ))}
-          </div>
-          <StatusPill state={state} onBreachClick={onBreachClick} />
+          <SectionSwitcher mode={state.view.mode} options={switcherOptions} onSelect={onViewMode} />
         </div>
 
         <div className="header-actions">
+          <StatusPill state={state} onBreachClick={onBreachClick} />
           <button
             type="button"
             className="btn"

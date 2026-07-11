@@ -167,15 +167,6 @@ export function ExternalDependencyInspector({ dep, tasks, today, linkedRisks, on
         </div>
 
         <div className="detail-section">
-          <div className="detail-label" style={{ marginBottom: 4 }}>Metadata</div>
-          <div style={{ fontSize: 11.5, color: 'var(--ink-muted)' }}>
-            <div>Created: {new Date(dep.createdAt).toLocaleDateString()}</div>
-            <div>Last reviewed: {new Date(dep.lastReviewedAt).toLocaleDateString()}</div>
-            <div>ID: {dep.id}</div>
-          </div>
-        </div>
-
-        <div className="detail-section">
           {confirmDelete ? (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <span style={{ fontSize: 12.5, color: 'var(--breach)' }}>Remove this dependency?</span>
@@ -191,6 +182,18 @@ export function ExternalDependencyInspector({ dep, tasks, today, linkedRisks, on
               Remove dependency
             </button>
           )}
+        </div>
+
+        {/* Audit metadata (collapsed by default) */}
+        <div className="detail-section">
+          <details className="detail-audit">
+            <summary>Audit metadata</summary>
+            <div className="detail-value" style={{ fontSize: 11.5, color: 'var(--ink-muted)' }}>
+              <div>Created: {new Date(dep.createdAt).toLocaleDateString()}</div>
+              <div>Last reviewed: {new Date(dep.lastReviewedAt).toLocaleDateString()}</div>
+              <div>ID: {dep.id}</div>
+            </div>
+          </details>
         </div>
       </div>
     </div>

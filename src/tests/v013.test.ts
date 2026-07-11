@@ -140,6 +140,7 @@ function makeState(domain: AppDomainState): AppState {
       deliverablesVisibleInTimeline: false,
       selectedDeliverableId: null,
       signalsRailOpen: true,
+      riskSummaryCollapsed: false,
     },
     pendingForecast: null,
     pendingChange: null,

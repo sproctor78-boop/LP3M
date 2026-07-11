@@ -418,10 +418,12 @@ export function TaskInspector({
       </div>
 
       <div className="detail-section">
-        <div className="detail-label">Reference</div>
-        <div className="detail-value">
-          {task.id} · {formatNice(task.startDate)} → {formatNice(task.endDate)}
-        </div>
+        <details className="detail-audit">
+          <summary>Audit metadata</summary>
+          <div className="detail-value">
+            {task.id} · {formatNice(task.startDate)} → {formatNice(task.endDate)}
+          </div>
+        </details>
       </div>
     </div>
   );

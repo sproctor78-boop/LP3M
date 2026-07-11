@@ -194,23 +194,25 @@ export function RiskInspector({
         </div>
       ) : null}
 
-      {/* Score editing */}
+      {/* Score editing — Inherent / Residual / Target side-by-side */}
       <div className="detail-section">
-        <ScoreEditor
-          label="Inherent"
-          score={risk.scores.inherent}
-          onChange={(s) => onUpdateRisk(risk.id, { scores: { ...risk.scores, inherent: s } })}
-        />
-        <ScoreEditor
-          label="Residual"
-          score={risk.scores.residual}
-          onChange={(s) => onUpdateRisk(risk.id, { scores: { ...risk.scores, residual: s } })}
-        />
-        <ScoreEditor
-          label="Target"
-          score={risk.scores.target}
-          onChange={(s) => onUpdateRisk(risk.id, { scores: { ...risk.scores, target: s } })}
-        />
+        <div className="risk-score-grid">
+          <ScoreEditor
+            label="Inherent"
+            score={risk.scores.inherent}
+            onChange={(s) => onUpdateRisk(risk.id, { scores: { ...risk.scores, inherent: s } })}
+          />
+          <ScoreEditor
+            label="Residual"
+            score={risk.scores.residual}
+            onChange={(s) => onUpdateRisk(risk.id, { scores: { ...risk.scores, residual: s } })}
+          />
+          <ScoreEditor
+            label="Target"
+            score={risk.scores.target}
+            onChange={(s) => onUpdateRisk(risk.id, { scores: { ...risk.scores, target: s } })}
+          />
+        </div>
       </div>
 
       <div className="detail-section">
@@ -384,10 +386,12 @@ export function RiskInspector({
       </div>
 
       <div className="detail-section">
-        <div className="detail-label">Reference</div>
-        <div className="detail-value" style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>
-          {risk.id} · last modified {new Date(risk.lastModifiedAt).toLocaleDateString()}
-        </div>
+        <details className="detail-audit">
+          <summary>Audit metadata</summary>
+          <div className="detail-value" style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+            {risk.id} · last modified {new Date(risk.lastModifiedAt).toLocaleDateString()}
+          </div>
+        </details>
       </div>
     </div>
   );

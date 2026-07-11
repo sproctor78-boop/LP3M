@@ -176,6 +176,8 @@ export interface AppViewState {
   selectedDeliverableId: string | null;
   /** When true, the Signals rail is shown on the Timeline view. */
   signalsRailOpen: boolean;
+  /** When true, the Risk Register's stats summary strip is collapsed. */
+  riskSummaryCollapsed: boolean;
 }
 
 export interface TaskMovement {

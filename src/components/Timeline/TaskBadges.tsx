@@ -1,9 +1,12 @@
 // =============================================================================
-// TaskBadges — compact badge cluster rendered on timeline bars and task-list rows.
-// Absolutely positioned; pointer events scoped to the badges themselves.
+// TaskBadges — compact icon-only badge cluster rendered inside task bars and
+// task-list rows.
+// =============================================================================
+// A normal flex child of the bar's row (never absolutely positioned) so the
+// title's flex:1 shrinks around it instead of badges painting over text —
+// see the overlay contract comment at the top of Timeline.tsx.
 // =============================================================================
 
-import { useRef } from 'react';
 import { RiskBadge, DepBadge, GateBadge } from '../../state/selectors';
 
 export type BadgeType = 'risk' | 'dep' | 'gate';
@@ -19,7 +22,7 @@ interface Props {
   risk: RiskBadge | null;
   dep: DepBadge | null;
   gate: GateBadge | null;
-  /** Total bar width in px — used to decide collapse-to-dot mode. */
+  /** Total bar width in px — below a hard floor even a single icon collapses to a dot. */
   barWidth?: number;
   /** Smaller variant for task-list panel rows. */
   small?: boolean;
@@ -28,8 +31,45 @@ interface Props {
   onClick: (payload: BadgeClickPayload) => void;
 }
 
-/** Below this bar width (px) collapse all badges to a single severity dot. */
-const COLLAPSE_THRESHOLD = 60;
+/** Below this bar width (px), even a single badge collapses to a severity dot. */
+const HARD_COLLAPSE_THRESHOLD = 34;
+
+function RiskIcon() {
+  return (
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
+      <path d="M7 2 L12.5 11.5 L1.5 11.5 Z" strokeLinejoin="round" />
+      <path d="M7 5.5v2.5" strokeLinecap="round" />
+      <circle cx="7" cy="9.6" r="0.6" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function DepIcon() {
+  return (
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
+      <rect x="2" y="5.5" width="4" height="3" rx="0.8" />
+      <rect x="8" y="5.5" width="4" height="3" rx="0.8" />
+      <path d="M6 7h2" strokeLinecap="round" />
+      <path d="M4 5.5V3M10 5.5V3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function GateIcon() {
+  return (
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
+      <circle cx="7" cy="7" r="5.3" />
+      <path d="M4.6 7.2 L6.2 8.8 L9.4 5.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+interface BadgeEntry {
+  type: BadgeType;
+  icon: JSX.Element;
+  className: string;
+  tooltip: string;
+}
 
 export function TaskBadges({
   taskId,
@@ -42,148 +82,92 @@ export function TaskBadges({
   onLeave,
   onClick,
 }: Props) {
-  const count = (risk ? 1 : 0) + (dep ? 1 : 0) + (gate ? 1 : 0);
-  if (count === 0) return null;
+  const entries: BadgeEntry[] = [];
+  if (risk) {
+    entries.push({
+      type: 'risk',
+      icon: <RiskIcon />,
+      className: 'rip-badge--risk',
+      tooltip: `Risk score: ${risk.score}`,
+    });
+  }
+  if (dep) {
+    entries.push({
+      type: 'dep',
+      icon: <DepIcon />,
+      className: 'rip-badge--dep',
+      tooltip: `External dependency: ${dep.worstStatus}`,
+    });
+  }
+  if (gate) {
+    entries.push({
+      type: 'gate',
+      icon: <GateIcon />,
+      className: 'rip-badge--gate',
+      tooltip: `Gate criteria: ${gate.criteriaMet}/${gate.criteriaTotal}`,
+    });
+  }
+  if (entries.length === 0) return null;
 
-  const collapsed = typeof barWidth === 'number' && barWidth < COLLAPSE_THRESHOLD;
+  const iconSizeClass = small ? 'task-badge-icon--small' : 'task-badge-icon';
+  const hardCollapse = typeof barWidth === 'number' && barWidth < HARD_COLLAPSE_THRESHOLD;
 
-  const riskRef = useRef<HTMLSpanElement>(null);
-  const depRef = useRef<HTMLSpanElement>(null);
-  const gateRef = useRef<HTMLSpanElement>(null);
+  const badgeButton = (entry: BadgeEntry, key: string) => (
+    <span
+      key={key}
+      className={`rip-badge ${entry.className} ${iconSizeClass}`}
+      onPointerDown={(e) => e.stopPropagation()}
+      onMouseEnter={(e) => onHover({ type: entry.type, taskId, rect: (e.target as HTMLElement).getBoundingClientRect() })}
+      onMouseLeave={onLeave}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick({ type: entry.type, taskId, rect: (e.target as HTMLElement).getBoundingClientRect() });
+      }}
+      title={entry.tooltip}
+    >
+      {entry.icon}
+    </span>
+  );
 
-  if (collapsed) {
-    // Single severity dot — pick highest severity colour
-    let dotClass = 'rip-badge rip-badge--gate';
-    if (risk) dotClass = 'rip-badge rip-badge--risk';
-    else if (dep && (dep.worstStatus === 'Late' || dep.worstStatus === 'AtRisk'))
-      dotClass = 'rip-badge rip-badge--dep';
-    const firstType: BadgeType = risk ? 'risk' : dep ? 'dep' : 'gate';
+  // Hard collapse (bar too narrow for even one icon) or 3+ badges: single
+  // severity chip; hover reveals the full list without disturbing layout.
+  if (hardCollapse || entries.length >= 3) {
+    const primary = entries[0];
     return (
       <span
-        className={dotClass}
-        style={small ? collapseStyleSmall : collapseStyle}
+        className="task-badges-group task-badges-collapsed"
         onPointerDown={(e) => e.stopPropagation()}
-        onMouseEnter={(e) => {
-          onHover({ type: firstType, taskId, rect: (e.target as HTMLElement).getBoundingClientRect() });
-        }}
-        onMouseLeave={onLeave}
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick({ type: firstType, taskId, rect: (e.target as HTMLElement).getBoundingClientRect() });
-        }}
-        title="Linked register records"
       >
-        •
+        <span
+          className={`rip-badge ${primary.className} ${iconSizeClass}`}
+          onMouseEnter={(e) => onHover({ type: primary.type, taskId, rect: (e.target as HTMLElement).getBoundingClientRect() })}
+          onMouseLeave={onLeave}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClick({ type: primary.type, taskId, rect: (e.target as HTMLElement).getBoundingClientRect() });
+          }}
+          title={entries.map((en) => en.tooltip).join(' · ')}
+        >
+          {primary.icon}
+          {entries.length > 1 ? <span className="task-badge-count">+{entries.length - 1}</span> : null}
+        </span>
+        {entries.length > 1 ? (
+          <span className="task-badges-flyout" role="group" aria-label="Linked register records">
+            {entries.map((entry) => badgeButton(entry, `flyout-${entry.type}`))}
+          </span>
+        ) : null}
       </span>
     );
   }
 
+  // 1–2 badges on a bar with room: render icons directly, stacked vertically
+  // when there are two so neither eats horizontal title space.
   return (
     <span
-      className="task-badges"
-      style={small ? badgesStyleSmall : badgesStyle}
+      className={`task-badges-group${entries.length > 1 ? ' task-badges-stack' : ''}`}
       onPointerDown={(e) => e.stopPropagation()}
     >
-      {risk ? (
-        <span
-          ref={riskRef}
-          className="rip-badge rip-badge--risk"
-          style={small ? badgeStyleSmall : badgeStyle}
-          onMouseEnter={() => onHover({ type: 'risk', taskId, rect: riskRef.current!.getBoundingClientRect() })}
-          onMouseLeave={onLeave}
-          onClick={(e) => {
-            e.stopPropagation();
-            onClick({ type: 'risk', taskId, rect: riskRef.current!.getBoundingClientRect() });
-          }}
-          title={`Risk score: ${risk.score}`}
-        >
-          {risk.score}
-        </span>
-      ) : null}
-      {dep ? (
-        <span
-          ref={depRef}
-          className="rip-badge rip-badge--dep"
-          style={small ? badgeStyleSmall : badgeStyle}
-          onMouseEnter={() => onHover({ type: 'dep', taskId, rect: depRef.current!.getBoundingClientRect() })}
-          onMouseLeave={onLeave}
-          onClick={(e) => {
-            e.stopPropagation();
-            onClick({ type: 'dep', taskId, rect: depRef.current!.getBoundingClientRect() });
-          }}
-          title={`External dependency: ${dep.worstStatus}`}
-        >
-          {/* plug glyph */}
-          ⏚
-        </span>
-      ) : null}
-      {gate ? (
-        <span
-          ref={gateRef}
-          className="rip-badge rip-badge--gate"
-          style={small ? badgeStyleSmall : badgeStyle}
-          onMouseEnter={() => onHover({ type: 'gate', taskId, rect: gateRef.current!.getBoundingClientRect() })}
-          onMouseLeave={onLeave}
-          onClick={(e) => {
-            e.stopPropagation();
-            onClick({ type: 'gate', taskId, rect: gateRef.current!.getBoundingClientRect() });
-          }}
-          title={`Gate criteria: ${gate.criteriaMet}/${gate.criteriaTotal}`}
-        >
-          {gate.criteriaMet}/{gate.criteriaTotal}
-        </span>
-      ) : null}
+      {entries.map((entry) => badgeButton(entry, entry.type))}
     </span>
   );
 }
-
-const badgesStyle: React.CSSProperties = {
-  position: 'absolute',
-  right: 4,
-  top: '50%',
-  transform: 'translateY(-50%)',
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 2,
-  zIndex: 2,
-  pointerEvents: 'auto',
-};
-
-const badgesStyleSmall: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 2,
-  marginLeft: 4,
-  pointerEvents: 'auto',
-};
-
-const badgeStyle: React.CSSProperties = {
-  cursor: 'pointer',
-  fontSize: 9,
-  padding: '1px 4px',
-};
-
-const badgeStyleSmall: React.CSSProperties = {
-  cursor: 'pointer',
-  fontSize: 8,
-  padding: '1px 3px',
-};
-
-const collapseStyle: React.CSSProperties = {
-  position: 'absolute',
-  right: 3,
-  top: '50%',
-  transform: 'translateY(-50%)',
-  cursor: 'pointer',
-  fontSize: 9,
-  padding: '1px 3px',
-  zIndex: 2,
-  pointerEvents: 'auto',
-};
-
-const collapseStyleSmall: React.CSSProperties = {
-  cursor: 'pointer',
-  fontSize: 8,
-  padding: '1px 2px',
-  marginLeft: 2,
-};
