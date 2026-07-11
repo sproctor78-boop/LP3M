@@ -88,6 +88,7 @@ function makeRisk(id: string, linkedTaskIds: string[] = [], linkedDeliverableIds
     proximity: 'MediumTerm',
     linkedTaskIds,
     linkedDeliverableIds,
+    linkedDependencyIds: [],
   };
 }
 

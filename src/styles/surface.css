@@ -93,6 +93,30 @@
 }
 
 /* --------------------------------------------------------------------------
+   .rip-chip-nav — clickable navigation chip (cross-register linked-entity
+   lists in inspectors). No remove control; whole chip is a button.
+   -------------------------------------------------------------------------- */
+.rip-chip-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.rip-chip-nav:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.rip-chip-nav:hover .rip-chip-label {
+  color: inherit;
+}
+
+/* --------------------------------------------------------------------------
    LinkPicker — type-ahead multi-select
    -------------------------------------------------------------------------- */
 .link-picker {

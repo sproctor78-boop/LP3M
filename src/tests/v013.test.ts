@@ -57,6 +57,7 @@ function makeRisk(id: string, extra: Partial<Risk> = {}): Risk {
     proximity: 'MediumTerm',
     linkedTaskIds: [],
     linkedDeliverableIds: [],
+    linkedDependencyIds: [],
     ...extra,
   };
 }

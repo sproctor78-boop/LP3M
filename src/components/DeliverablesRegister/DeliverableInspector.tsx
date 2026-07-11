@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { AcceptanceCriterion, Deliverable, DeliverableStatus, WorkItem } from '../../domain/types';
+import { AcceptanceCriterion, Deliverable, DeliverableStatus, Risk, WorkItem } from '../../domain/types';
 import { canBeAccepted, getCompletionPercentage, isOverdue } from '../../domain/deliverable';
 import { AcceptanceCriteriaEditor } from './AcceptanceCriteriaEditor';
+import { RiskScoreBadge } from '../RiskRegister/RiskScoreBadge';
 
 const STATUS_LABELS: Record<DeliverableStatus, string> = {
   Planned: 'Planned', InProduction: 'In Production', InReview: 'In Review',
@@ -17,6 +18,7 @@ interface Props {
   deliverable: Deliverable;
   tasks: WorkItem[];
   today: string;
+  linkedRisks: Risk[];
   onUpdate: (deliverableId: string, patch: Partial<Deliverable>) => void;
   onSetStatus: (deliverableId: string, status: DeliverableStatus, acceptedBy?: string, rejectionReason?: string) => void;
   onRemove: (deliverableId: string) => void;
@@ -26,12 +28,14 @@ interface Props {
   onReorderCriteria: (deliverableId: string, orderedIds: string[]) => void;
   onMarkMet: (deliverableId: string, criterionId: string) => void;
   onMarkUnmet: (deliverableId: string, criterionId: string) => void;
+  onSelectRisk: (riskId: string) => void;
 }
 
 export function DeliverableInspector({
   deliverable: d,
   tasks,
   today,
+  linkedRisks,
   onUpdate,
   onSetStatus,
   onRemove,
@@ -41,6 +45,7 @@ export function DeliverableInspector({
   onReorderCriteria,
   onMarkMet,
   onMarkUnmet,
+  onSelectRisk,
 }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmAccept, setConfirmAccept] = useState(false);
@@ -272,6 +277,28 @@ export function DeliverableInspector({
               </label>
             ))}
           </div>
+        </div>
+
+        {/* Related Risks */}
+        <div className="detail-section">
+          <div className="detail-label">Related Risks</div>
+          {linkedRisks.length === 0 ? (
+            <div className="detail-value" style={{ fontSize: 12, color: 'var(--ink-muted)' }}>None</div>
+          ) : (
+            <div className="link-picker-chips" style={{ border: 'none', padding: 0, minHeight: 0 }}>
+              {linkedRisks.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  className="rip-chip rip-chip-nav"
+                  onClick={() => onSelectRisk(r.id)}
+                >
+                  <span className="rip-chip-label">{r.id} — {r.title}</span>
+                  <RiskScoreBadge score={r.scores.residual} />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Notes */}

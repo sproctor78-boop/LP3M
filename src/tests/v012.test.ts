@@ -69,6 +69,7 @@ function makeRiskWithScore(
     proximity: 'MediumTerm',
     linkedTaskIds,
     linkedDeliverableIds: [],
+    linkedDependencyIds: [],
   };
 }
 

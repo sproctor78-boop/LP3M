@@ -43,6 +43,7 @@ export function seedRisks(): Risk[] {
       proximity: 'NearTerm' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -74,6 +75,7 @@ export function seedRisks(): Risk[] {
       proximity: 'Imminent' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -106,6 +108,7 @@ export function seedRisks(): Risk[] {
       proximity: 'Imminent' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -137,6 +140,7 @@ export function seedRisks(): Risk[] {
       proximity: 'NearTerm' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -166,6 +170,7 @@ export function seedRisks(): Risk[] {
       proximity: 'NearTerm' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -197,6 +202,7 @@ export function seedRisks(): Risk[] {
       proximity: 'NearTerm' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -226,6 +232,7 @@ export function seedRisks(): Risk[] {
       proximity: 'NearTerm' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -235,7 +242,7 @@ export function seedRisks(): Risk[] {
       id: 'R08',
       title: 'Contractor Site Vetting / Access Delay',
       description:
-        'MOD site access vetting for contractor personnel may be delayed, preventing planned installation activities from commencing on schedule.',
+        'Client site access vetting for contractor personnel may be delayed, preventing planned installation activities from commencing on schedule.',
       category: 'External',
       owner: 'P02',
       status: 'Open',
@@ -257,6 +264,7 @@ export function seedRisks(): Risk[] {
       proximity: 'Imminent' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: ['ED01'],
     },
 
     // -------------------------------------------------------------------------
@@ -286,6 +294,7 @@ export function seedRisks(): Risk[] {
       proximity: 'NearTerm' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -295,7 +304,7 @@ export function seedRisks(): Risk[] {
       id: 'R10',
       title: 'Integration Test Environment Late Availability',
       description:
-        'The MOD Integration Test and Evaluation Facility (ITEF) may not be available in Q3 2026 as scheduled, delaying acceptance testing and the service-commencement milestone.',
+        'The Integration Test and Evaluation Facility (ITEF) may not be available in Q3 2026 as scheduled, delaying acceptance testing and the service-commencement milestone.',
       category: 'Technical',
       owner: 'P04',
       status: 'Open',
@@ -317,6 +326,7 @@ export function seedRisks(): Risk[] {
       proximity: 'NearTerm' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: ['ED03'],
     },
 
     // -------------------------------------------------------------------------
@@ -337,7 +347,7 @@ export function seedRisks(): Risk[] {
       },
       proposedResidualScore: null,
       controls: [
-        { id: 'R11-C1', type: 'control', description: 'Standing watch brief from MOD DAAS; STANAG compliance register maintained' },
+        { id: 'R11-C1', type: 'control', description: 'Standing watch brief from the Standardisation Authority; STANAG compliance register maintained' },
       ],
       mitigations: [],
       raisedDate: '2026-03-15',
@@ -346,6 +356,7 @@ export function seedRisks(): Risk[] {
       proximity: 'NearTerm' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: [],
     },
 
     // -------------------------------------------------------------------------
@@ -377,6 +388,7 @@ export function seedRisks(): Risk[] {
       proximity: 'NearTerm' as Proximity,
       linkedTaskIds: [],
       linkedDeliverableIds: [],
+      linkedDependencyIds: [],
     },
   ];
 }

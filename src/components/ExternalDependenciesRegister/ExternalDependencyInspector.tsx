@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { DepStatus, ExternalDependency, WorkItem } from '../../domain/types';
+import { DepStatus, ExternalDependency, Risk, WorkItem } from '../../domain/types';
 import { isOverdue } from '../../domain/externalDependency';
+import { RiskScoreBadge } from '../RiskRegister/RiskScoreBadge';
 
 const ALL_STATUSES: DepStatus[] = ['OnTrack', 'AtRisk', 'Late', 'Received'];
 const STATUS_LABELS: Record<DepStatus, string> = {
@@ -14,11 +15,13 @@ interface Props {
   dep: ExternalDependency;
   tasks: WorkItem[];
   today: string;
+  linkedRisks: Risk[];
   onUpdate: (depId: string, patch: Partial<ExternalDependency>) => void;
   onRemove: (depId: string) => void;
+  onSelectRisk: (riskId: string) => void;
 }
 
-export function ExternalDependencyInspector({ dep, tasks, today, onUpdate, onRemove }: Props) {
+export function ExternalDependencyInspector({ dep, tasks, today, linkedRisks, onUpdate, onRemove, onSelectRisk }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const taskMap = new Map(tasks.map((t) => [t.id, t]));
   const overdue = isOverdue(dep, today);
@@ -126,6 +129,28 @@ export function ExternalDependencyInspector({ dep, tasks, today, onUpdate, onRem
           {dep.linkedTaskIds.length > 0 && (
             <div style={{ marginTop: 8, fontSize: 12, color: 'var(--ink-muted)' }}>
               {dep.linkedTaskIds.map((id) => taskMap.get(id)?.title ?? id).join(' · ')}
+            </div>
+          )}
+        </div>
+
+        {/* Related Risks */}
+        <div className="detail-section">
+          <div className="detail-label">Related Risks</div>
+          {linkedRisks.length === 0 ? (
+            <div className="detail-value" style={{ fontSize: 12, color: 'var(--ink-muted)' }}>None</div>
+          ) : (
+            <div className="link-picker-chips" style={{ border: 'none', padding: 0, minHeight: 0 }}>
+              {linkedRisks.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  className="rip-chip rip-chip-nav"
+                  onClick={() => onSelectRisk(r.id)}
+                >
+                  <span className="rip-chip-label">{r.id} — {r.title}</span>
+                  <RiskScoreBadge score={r.scores.residual} />
+                </button>
+              ))}
             </div>
           )}
         </div>

@@ -3,9 +3,9 @@
 // call sites). No React/DOM imports; safe for test and engine use.
 // =============================================================================
 
-import { AppDomainState } from '../domain/types';
+import { AppDomainState, Deliverable, ExternalDependency } from '../domain/types';
 import { DepStatus } from '../domain/externalDependency';
-import { RagColour } from '../domain/risk';
+import { RagColour, Risk } from '../domain/risk';
 
 // ── Risk badge ────────────────────────────────────────────────────────────────
 
@@ -107,4 +107,38 @@ export function getTaskBadges(taskId: string, domain: AppDomainState): TaskBadge
     dep: getTaskDepBadge(taskId, domain),
     gate: getTaskGateBadge(taskId, domain),
   };
+}
+
+// ── Register cross-links (Risk ↔ Deliverable / ExternalDependency) ────────────
+
+/** Non-closed risks whose linkedDeliverableIds includes this deliverable. */
+export function getDeliverableLinkedRisks(deliverableId: string, domain: AppDomainState): Risk[] {
+  return domain.risks.filter(
+    (r) => (r.linkedDeliverableIds ?? []).includes(deliverableId) && r.status !== 'Closed',
+  );
+}
+
+/** Non-closed risks whose linkedDependencyIds includes this external dependency. */
+export function getDependencyLinkedRisks(depId: string, domain: AppDomainState): Risk[] {
+  return domain.risks.filter(
+    (r) => (r.linkedDependencyIds ?? []).includes(depId) && r.status !== 'Closed',
+  );
+}
+
+/** Deliverables resolved from a risk's linkedDeliverableIds. Dangling ids are dropped. */
+export function getRiskLinkedDeliverables(riskId: string, domain: AppDomainState): Deliverable[] {
+  const risk = domain.risks.find((r) => r.id === riskId);
+  if (!risk) return [];
+  return risk.linkedDeliverableIds
+    .map((id) => domain.deliverables.find((d) => d.id === id))
+    .filter((d): d is Deliverable => d !== undefined);
+}
+
+/** External dependencies resolved from a risk's linkedDependencyIds. Dangling ids are dropped. */
+export function getRiskLinkedDependencies(riskId: string, domain: AppDomainState): ExternalDependency[] {
+  const risk = domain.risks.find((r) => r.id === riskId);
+  if (!risk) return [];
+  return risk.linkedDependencyIds
+    .map((id) => domain.externalDependencies.find((d) => d.id === id))
+    .filter((d): d is ExternalDependency => d !== undefined);
 }

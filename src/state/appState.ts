@@ -145,6 +145,16 @@ function withRecomputedTasks(state: AppState, nextTasks: WorkItem[]): AppState {
   };
 }
 
+/** Recompute tasks against a partially-updated domain, undo-safe. */
+function withDomainRecompute(
+  state: AppState,
+  domainPatch: Partial<AppDomainState>,
+): AppState {
+  const nextDomain = { ...state.domain, ...domainPatch };
+  const tasks = recompute(deepCopyTasks(state.domain.tasks), nextDomain);
+  return { ...state, domain: { ...nextDomain, tasks } };
+}
+
 function appBaseReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     // ------- view / chrome -------
@@ -470,13 +480,38 @@ function appBaseReducer(state: AppState, action: AppAction): AppState {
       return { ...state, domain: { ...state.domain, people } };
     }
     case 'removePerson': {
+      const removedPerson = state.domain.people.find((p) => p.id === action.personId);
       const people = state.domain.people.filter((p) => p.id !== action.personId);
       // Remove the person from all task assignee lists.
       const tasks = state.domain.tasks.map((t) => ({
         ...t,
         assignees: t.assignees.filter((id) => id !== action.personId),
       }));
-      return { ...state, domain: { ...state.domain, people, tasks } };
+      // Degrade owner references from personId to a display-name snapshot —
+      // free-text owners are untouched.
+      const displayName = removedPerson?.displayName;
+      const risks = displayName
+        ? state.domain.risks.map((r) =>
+            r.owner === action.personId
+              ? { ...r, owner: displayName, lastModifiedAt: new Date().toISOString() }
+              : r,
+          )
+        : state.domain.risks;
+      const deliverables = displayName
+        ? state.domain.deliverables.map((d) =>
+            d.owner === action.personId
+              ? { ...d, owner: displayName, lastReviewedAt: new Date().toISOString() }
+              : d,
+          )
+        : state.domain.deliverables;
+      const externalDependencies = displayName
+        ? state.domain.externalDependencies.map((dep) =>
+            dep.internalOwner === action.personId
+              ? { ...dep, internalOwner: displayName, lastReviewedAt: new Date().toISOString() }
+              : dep,
+          )
+        : state.domain.externalDependencies;
+      return { ...state, domain: { ...state.domain, people, tasks, risks, deliverables, externalDependencies } };
     }
 
     // ------- RAID view -------
@@ -637,24 +672,28 @@ function appBaseReducer(state: AppState, action: AppAction): AppState {
 
     // ------- External Dependencies CRUD -------
     case 'addExternalDependency':
-      return {
-        ...state,
-        domain: { ...state.domain, externalDependencies: [...state.domain.externalDependencies, action.dep] },
-      };
+      return withDomainRecompute(state, {
+        externalDependencies: [...state.domain.externalDependencies, action.dep],
+      });
     case 'updateExternalDependency': {
       const externalDependencies = state.domain.externalDependencies.map((d) =>
         d.id === action.depId
           ? { ...d, ...action.patch, lastReviewedAt: new Date().toISOString() }
           : d,
       );
-      return { ...state, domain: { ...state.domain, externalDependencies } };
+      return withDomainRecompute(state, { externalDependencies });
     }
     case 'removeExternalDependency': {
       const externalDependencies = state.domain.externalDependencies.filter((d) => d.id !== action.depId);
+      const removedId = action.depId;
+      const risks = state.domain.risks.map((r) => {
+        const filtered = r.linkedDependencyIds.filter((id) => id !== removedId);
+        if (filtered.length === r.linkedDependencyIds.length) return r;
+        return { ...r, linkedDependencyIds: filtered, lastModifiedAt: new Date().toISOString() };
+      });
       const newExtDepId = state.view.selectedExtDepId === action.depId ? null : state.view.selectedExtDepId;
       return {
-        ...state,
-        domain: { ...state.domain, externalDependencies },
+        ...withDomainRecompute(state, { externalDependencies, risks }),
         view: {
           ...state.view,
           selectedExtDepId: newExtDepId,
@@ -668,7 +707,7 @@ function appBaseReducer(state: AppState, action: AppAction): AppState {
           ? { ...d, status: action.status, lastReviewedAt: new Date().toISOString() }
           : d,
       );
-      return { ...state, domain: { ...state.domain, externalDependencies } };
+      return withDomainRecompute(state, { externalDependencies });
     }
 
     // ------- Deliverables view -------
@@ -690,17 +729,16 @@ function appBaseReducer(state: AppState, action: AppAction): AppState {
 
     // ------- Deliverables CRUD -------
     case 'addDeliverable':
-      return {
-        ...state,
-        domain: { ...state.domain, deliverables: [...state.domain.deliverables, action.deliverable] },
-      };
+      return withDomainRecompute(state, {
+        deliverables: [...state.domain.deliverables, action.deliverable],
+      });
     case 'updateDeliverable': {
       const deliverables = state.domain.deliverables.map((d) =>
         d.id === action.deliverableId
           ? { ...d, ...action.patch, lastReviewedAt: new Date().toISOString() }
           : d,
       );
-      return { ...state, domain: { ...state.domain, deliverables } };
+      return withDomainRecompute(state, { deliverables });
     }
     case 'removeDeliverable': {
       const deliverables = state.domain.deliverables.filter((d) => d.id !== action.deliverableId);
@@ -712,8 +750,7 @@ function appBaseReducer(state: AppState, action: AppAction): AppState {
       });
       const newId = state.view.selectedDeliverableId === action.deliverableId ? null : state.view.selectedDeliverableId;
       return {
-        ...state,
-        domain: { ...state.domain, deliverables, risks },
+        ...withDomainRecompute(state, { deliverables, risks }),
         view: {
           ...state.view,
           selectedDeliverableId: newId,
@@ -740,7 +777,7 @@ function appBaseReducer(state: AppState, action: AppAction): AppState {
           ? { ...d, ...patch, lastReviewedAt: now }
           : d,
       );
-      return { ...state, domain: { ...state.domain, deliverables } };
+      return withDomainRecompute(state, { deliverables });
     }
 
     // ------- Acceptance criteria -------
