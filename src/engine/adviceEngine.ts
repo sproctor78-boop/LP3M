@@ -6,7 +6,7 @@
 import { AppDomainState, WorkItem } from '../domain/types';
 import { AppAction } from '../state/appState';
 
-export type SuggestionKind = 'missing-milestone' | 'breach-from-birth' | 'stale-risk' | 'floating-milestone' | 'received-constraining';
+export type SuggestionKind = 'missing-milestone' | 'breach-from-birth' | 'stale-risk' | 'floating-milestone' | 'received-constraining' | 'milestone-drift';
 
 export interface Suggestion {
   id: string;
@@ -23,6 +23,7 @@ const KIND_SEVERITY: Record<SuggestionKind, number> = {
   'breach-from-birth':      10,
   'stale-risk':             20,
   'floating-milestone':     30,
+  'milestone-drift':        35,
   'missing-milestone':      40,
   'received-constraining':  50,
 };
@@ -179,6 +180,32 @@ export function deriveSuggestions(domain: AppDomainState, today: string): Sugges
           actions: [],
         });
       }
+    }
+  }
+
+  // ── Rule 6: Acceptance-milestone drift ─────────────────────────────────
+  for (const del of domain.deliverables) {
+    if (del.status === 'Accepted') continue;
+    for (const taskId of del.linkedTaskIds) {
+      const task = domain.tasks.find((t) => t.id === taskId);
+      if (!task || !task.isMilestone) continue;
+      if (task.startDate === del.targetDate) continue;
+
+      suggestions.push({
+        id: `milestone-drift-${del.id}-${task.id}`,
+        kind: 'milestone-drift',
+        title: `Acceptance milestone drifted for "${del.title}"`,
+        detail: `Milestone "${task.title}" is dated ${task.startDate}; deliverable target is ${del.targetDate}`,
+        taskId: task.id,
+        entityId: del.id,
+        actions: [
+          {
+            type: 'updateTask',
+            taskId: task.id,
+            patch: { startDate: del.targetDate, endDate: del.targetDate },
+          },
+        ],
+      });
     }
   }
 

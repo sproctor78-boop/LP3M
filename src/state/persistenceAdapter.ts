@@ -6,9 +6,11 @@
 // not survive a refresh.
 // =============================================================================
 
-import { AppState } from '../domain/types';
+import { AppState, WorkItem } from '../domain/types';
 import { createInitialDomainState } from '../domain/seedData';
 import { DEFAULT_TASK_LIST_WIDTH, DEFAULT_ZOOM } from '../domain/constants';
+import { localToday } from './appState';
+import { recomputeSchedule } from '../engine/scheduleEngine';
 
 const STORE_KEY = 'ripple_state_v9';
 const STORE_VERSION = 9;
@@ -204,8 +206,15 @@ export function loadAppState(): AppState {
     if (!raw) return createInitialAppState();
     const parsed = JSON.parse(raw) as unknown;
     if (!isValidEnvelope(parsed)) return createInitialAppState();
+    const domain = migrateDomain(parsed.state.domain);
+    domain.tasks = recomputeSchedule(
+      domain.tasks,
+      domain.externalDependencies,
+      domain.deliverables,
+      localToday(),
+    );
     return {
-      domain: migrateDomain(parsed.state.domain),
+      domain,
       view: migrateView(parsed.state.view),
       pendingForecast: null,
       pendingChange: null,
@@ -217,11 +226,26 @@ export function loadAppState(): AppState {
   }
 }
 
+/** Strip engine-derived fields before persisting — they are recomputed on load. */
+function stripDerivedFields(tasks: WorkItem[]): WorkItem[] {
+  return tasks.map((t) => {
+    const { criticalPath, floatDays, forecastWarning, deliverableWarning, ...rest } = t;
+    void criticalPath;
+    void floatDays;
+    void forecastWarning;
+    void deliverableWarning;
+    return rest as WorkItem;
+  });
+}
+
 export function saveAppState(state: AppState): void {
   try {
     const envelope: StoredEnvelope = {
       version: STORE_VERSION,
-      state: { domain: state.domain, view: state.view },
+      state: {
+        domain: { ...state.domain, tasks: stripDerivedFields(state.domain.tasks) },
+        view: state.view,
+      },
     };
     localStorage.setItem(STORE_KEY, JSON.stringify(envelope));
   } catch {
